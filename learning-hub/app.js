@@ -61,7 +61,9 @@ const els = {
   checkAnswerBtn: document.getElementById("btn-check-answer"),
   gradeWrap: document.getElementById("grade-actions"),
   btnAgain: document.getElementById("btn-again"),
+  btnHard: document.getElementById("btn-hard"),
   btnGood: document.getElementById("btn-good"),
+  btnEasy: document.getElementById("btn-easy"),
   navDecks: document.getElementById("nav-decks"),
   navLearn: document.getElementById("nav-learn"),
   navProjects: document.getElementById("nav-projects"),
@@ -127,6 +129,14 @@ const els = {
   deckDescInput: document.getElementById("deck-desc-input"),
   builderCardsList: document.getElementById("builder-cards-list"),
   builderAddCard: document.getElementById("builder-add-card"),
+  aiGenNotes: document.getElementById("ai-gen-notes"),
+  aiGenCount: document.getElementById("ai-gen-count"),
+  aiGenGo: document.getElementById("ai-gen-go"),
+  aiGenStop: document.getElementById("ai-gen-stop"),
+  aiGenStatus: document.getElementById("ai-gen-status"),
+  aiGenMsg: document.getElementById("ai-gen-msg"),
+  aiGenKeyRow: document.getElementById("ai-gen-key-row"),
+  aiGenKey: document.getElementById("ai-gen-key"),
   importDeckModal: document.getElementById("import-deck-modal"),
   importDeckClose: document.getElementById("import-deck-close"),
   importDeckCancel: document.getElementById("import-deck-cancel"),
@@ -1566,6 +1576,7 @@ function nextCard() {
   els.card.classList.remove("pop");
   void els.card.offsetWidth;
   els.card.classList.add("pop");
+  updateGradeHints();
 }
 
 function shuffleIndexes(n) {
@@ -1684,8 +1695,68 @@ function revealAnswer() {
   });
 }
 
+// ---- FSRS-lite scheduling ----
+// A lightweight stability/difficulty model (FSRS-style power forgetting curve)
+// targeting ~90% recall. Each card carries stability (days) and difficulty (1-10).
+const FSRS_RETENTION = 0.9;
+const GRADE_NUM = { again: 1, hard: 2, good: 3, easy: 4 };
+
+function fsrsSeed(rec) {
+  if (typeof rec.stability !== "number") {
+    rec.stability = Math.max(0.4, rec.interval || 1);
+    rec.difficulty = Math.min(10, Math.max(1, 5 + (rec.lapses || 0) * 0.5));
+  }
+}
+
+function fsrsNextStability(S, D, elapsed, gradeNum) {
+  const R = Math.pow(1 + elapsed / (9 * S), -1); // retrievability now
+  const gradeMult = gradeNum === 2 ? 0.6 : gradeNum === 4 ? 1.4 : 1.0;
+  // Harder-won recall (low R) and lower difficulty grow stability more.
+  const growth = Math.max(1.05, 1 + 0.15 * (10 - D) * (1.2 - R) * gradeMult);
+  return S * growth;
+}
+
+function fsrsIntervalDays(S, gradeNum) {
+  let days = Math.round(9 * S * (1 / FSRS_RETENTION - 1));
+  if (gradeNum === 2) days = Math.max(1, Math.round(days * 0.7));
+  if (gradeNum === 4) days = Math.max(days + 1, Math.round(days * 1.25));
+  return Math.max(1, Math.min(days, 365));
+}
+
+function fsrsPreview(rec, kind) {
+  const g = GRADE_NUM[kind] ?? 3;
+  if (g === 1) return 0;
+  const S = typeof rec?.stability === "number" ? rec.stability : Math.max(0.4, rec?.interval || 1);
+  const D = typeof rec?.difficulty === "number" ? rec.difficulty : 5;
+  return fsrsIntervalDays(fsrsNextStability(S, D, rec?.interval || 0, g), g);
+}
+
+function fsrsApply(rec, kind, now) {
+  fsrsSeed(rec);
+  const g = GRADE_NUM[kind] ?? 3;
+  const S = rec.stability;
+  const D = rec.difficulty;
+  if (g === 1) {
+    rec.lapses = (rec.lapses || 0) + 1;
+    rec.difficulty = Math.min(10, D + 0.5);
+    rec.stability = Math.max(0.3, S * 0.4);
+    rec.reps = 0;
+    rec.interval = 0;
+    rec.due = now + 10 * 60 * 1000;
+    return { relearn: true };
+  }
+  rec.difficulty = Math.min(10, Math.max(1, D + (3 - g) * 0.4));
+  rec.stability = fsrsNextStability(S, D, rec.interval || 0, g);
+  const days = fsrsIntervalDays(rec.stability, g);
+  rec.reps = (rec.reps || 0) + 1;
+  rec.interval = days;
+  rec.due = now + days * DAY;
+  return { relearn: false, days };
+}
+
 function grade(kind) {
   if (!current || !current.revealed || !session) return;
+  if (!GRADE_NUM[kind]) kind = "good";
   Juice.sound(kind === "again" ? "again" : "good");
 
   const { deck } = session;
@@ -1697,33 +1768,30 @@ function grade(kind) {
     store.progress[deck.id][card.q] ??
     (store.progress[deck.id][card.q] = { reps: 0, interval: 0, due: 0, firstSeen: now });
 
-  if (kind === "again") {
-    rec.interval = 0;
-    rec.reps = 0;
-    rec.lapses = (rec.lapses ?? 0) + 1;
-    rec.due = now + 10 * 60 * 1000;
+  const res = fsrsApply(rec, kind, now);
+  if (res.relearn) {
     session.agains++;
     session.queue.splice(Math.min(REPEAT_AFTER_AGAIN, session.queue.length), 0, card);
-  } else {
-    rec.reps++;
-    rec.interval = nextInterval(rec.interval);
-    rec.due = now + rec.interval * DAY;
   }
   rec.seenAt = now;
 
   if (store.stats.date !== todayKey()) store.stats = { date: todayKey(), reviewed: 0 };
   store.stats.reviewed++;
   session.reviewed++;
-  addXp(kind === "again" ? 2 : 10);
+  addXp(kind === "again" ? 2 : kind === "hard" ? 6 : kind === "easy" ? 12 : 10);
 
   current = null;
   nextCard();
 }
 
-function nextInterval(cur) {
-  if (!cur || cur < 1) return 1;
-  const steps = [1, 3, 7, 14, 30, 60, 120, 240];
-  return steps.find((s) => s > cur) ?? Math.min(cur * 2, 365);
+function updateGradeHints() {
+  if (!current || !session || !els.gradeWrap) return;
+  const rec = store.progress?.[session.deck.id]?.[current.card.q];
+  const fmtDays = (d) => (d <= 0 ? "<10m" : d === 1 ? "1d" : d < 30 ? `${d}d` : d < 365 ? `${Math.round(d / 30)}mo` : "1y");
+  for (const kind of ["again", "hard", "good", "easy"]) {
+    const span = els.gradeWrap.querySelector(`[data-hint="${kind}"]`);
+    if (span) span.textContent = fmtDays(fsrsPreview(rec, kind));
+  }
 }
 
 function renderDone(kind, deck) {
@@ -7571,6 +7639,176 @@ function accuseSuspect() {
 /* ---------- Custom Deck Builder & Importer ---------- */
 
 let customDeckDraftCards = [];
+let aiGenAbort = null;
+
+const AI_CARD_SYSTEM_PROMPT = [
+  "You write high-quality spaced-repetition flashcards for a study app.",
+  "Return ONLY a JSON array — no explanation, no markdown, no code fences.",
+  'Each item must be {"t": "short topic", "q": "question", "a": "answer"}.',
+  "Rules:",
+  "- One idea per card; each question must be answerable from the source material alone.",
+  "- Answers stay under 30 words and are plain text; wrap code in backticks.",
+  "- Cover definitions, syntax, gotchas, and one tiny example per key concept.",
+  "- Vary topics, order from basic to advanced, and never duplicate a card.",
+].join("\n");
+
+function aiGenNeedsKey() {
+  return (isGemini() || isOpenRouter()) && !chatState.apiKey;
+}
+
+function setAiGenMsg(text, kind = "") {
+  if (!els.aiGenMsg) return;
+  els.aiGenMsg.textContent = text;
+  els.aiGenMsg.className = `hint ai-gen-msg${kind ? ` ${kind}` : ""}`;
+}
+
+function aiGenBusy(on) {
+  if (els.aiGenGo) els.aiGenGo.disabled = on;
+  if (els.aiGenStop) els.aiGenStop.classList.toggle("hidden", !on);
+  if (els.aiGenStatus && !on) els.aiGenStatus.textContent = "Paste notes or a topic → draft cards";
+}
+
+function resetAiGenPanel() {
+  aiGenAbort?.abort();
+  aiGenAbort = null;
+  if (els.aiGenNotes) els.aiGenNotes.value = "";
+  if (els.aiGenCount) els.aiGenCount.value = "10";
+  if (els.aiGenKey) els.aiGenKey.value = "";
+  els.aiGenKeyRow?.classList.add("hidden");
+  setAiGenMsg("");
+  aiGenBusy(false);
+}
+
+function sanitizeJsonText(s) {
+  let out = "";
+  let inStr = false;
+  let esc = false;
+  for (const ch of s) {
+    if (esc) {
+      out += ch;
+      esc = false;
+      continue;
+    }
+    if (ch === "\\") {
+      out += ch;
+      esc = true;
+      continue;
+    }
+    if (ch === '"') {
+      inStr = !inStr;
+      out += ch;
+      continue;
+    }
+    if (inStr && (ch === "\n" || ch === "\r" || ch === "\t")) {
+      out += ch === "\t" ? "\\t" : "\\n";
+      continue;
+    }
+    out += ch;
+  }
+  return out;
+}
+
+function parseAiCards(text) {
+  const raw = String(text ?? "").trim();
+  if (!raw) return [];
+  const clean = raw.replace(/```(?:json)?/gi, "").trim();
+  const start = clean.indexOf("[");
+  const end = clean.lastIndexOf("]");
+  if (start !== -1 && end > start) {
+    try {
+      const arr = JSON.parse(sanitizeJsonText(clean.slice(start, end + 1)));
+      if (Array.isArray(arr)) {
+        return arr
+          .map((c) => ({
+            t: String(c?.t ?? c?.topic ?? "General").replace(/\s+/g, " ").trim().slice(0, 40) || "General",
+            q: String(c?.q ?? c?.question ?? c?.front ?? "").replace(/\s+/g, " ").trim(),
+            a: String(c?.a ?? c?.answer ?? c?.back ?? "").replace(/\s+/g, " ").trim(),
+          }))
+          .filter((c) => c.q && c.a);
+      }
+    } catch {
+      // fall through to the line parser
+    }
+  }
+  const cards = [];
+  let cur = null;
+  for (const line of clean.split(/\r?\n/).map((l) => l.trim()).filter(Boolean)) {
+    const qm = line.match(/^(?:Q|Question)\s*[:.)-]\s*(.+)$/i);
+    const am = line.match(/^(?:A|Answer)\s*[:.)-]\s*(.+)$/i);
+    if (qm) {
+      if (cur?.q && cur.a) cards.push(cur);
+      cur = { t: "General", q: qm[1].replace(/^["'`]|["'`]$/g, "").trim(), a: "" };
+    } else if (am && cur) {
+      cur.a = am[1].replace(/^["'`]|["'`]$/g, "").trim();
+    }
+  }
+  if (cur?.q && cur.a) cards.push(cur);
+  return cards.filter((c) => c.q && c.a);
+}
+
+async function generateAiCards() {
+  if (aiGenAbort) return;
+  const notes = els.aiGenNotes?.value.trim() ?? "";
+  if (notes.length < 8) {
+    setAiGenMsg("Paste a little more material first — a sentence or two is enough.", "warn");
+    els.aiGenNotes?.focus();
+    return;
+  }
+  if (aiGenNeedsKey()) {
+    const typed = els.aiGenKey?.value.trim();
+    if (!typed) {
+      els.aiGenKeyRow?.classList.remove("hidden");
+      els.aiGenKey?.focus();
+      setAiGenMsg(`Add your ${isGemini() ? "Gemini" : "OpenRouter"} API key to generate cards.`, "warn");
+      return;
+    }
+    chatState.apiKey = typed;
+    saveChatState();
+    els.aiGenKeyRow?.classList.add("hidden");
+  }
+  const model = activeModel();
+  if (!model) {
+    setAiGenMsg("Pick a model in the AI Tutor tab first, then try again.", "warn");
+    return;
+  }
+  const count = Math.max(3, Math.min(20, Number(els.aiGenCount?.value) || 10));
+
+  aiGenAbort = new AbortController();
+  aiGenBusy(true);
+  setAiGenMsg(`Generating ${count} cards…`);
+  let text = "";
+  try {
+    await streamCurrent(
+      [{ role: "user", content: `Make ${count} cards from this material:\n\n${notes}` }],
+      aiGenAbort.signal,
+      (tok) => {
+        text += tok;
+        const made = (text.match(/"q"\s*:/g) || []).length;
+        if (els.aiGenStatus) els.aiGenStatus.textContent = `Writing cards… ${Math.min(made, count)}/${count}`;
+      },
+      AI_CARD_SYSTEM_PROMPT,
+      0.5
+    );
+    const cards = parseAiCards(text);
+    if (!cards.length) throw new Error("That reply had no usable cards — try again or add more detail.");
+    syncCustomDeckDraftFromDom();
+    const placeholdersOnly = customDeckDraftCards.every((c) => !c.q.trim() && !c.a.trim());
+    const fresh = cards.slice(0, count).map((c) => ({ t: c.t, q: c.q, a: c.a }));
+    customDeckDraftCards = placeholdersOnly
+      ? fresh
+      : [...customDeckDraftCards.filter((c) => c.q.trim() || c.a.trim()), ...fresh];
+    renderCustomDeckCardsBuilder();
+    setAiGenMsg(`Added ${fresh.length} card${fresh.length === 1 ? "" : "s"} — edit anything below, then save.`, "ok");
+    Juice.sound("good");
+    Juice.confetti(50);
+  } catch (err) {
+    if (err.name === "AbortError") setAiGenMsg("Stopped — nothing was added.");
+    else setAiGenMsg(err.message || "Generation failed. Try again.", "warn");
+  } finally {
+    aiGenAbort = null;
+    aiGenBusy(false);
+  }
+}
 
 function openCustomDeckModal() {
   customDeckDraftCards = [
@@ -7579,6 +7817,7 @@ function openCustomDeckModal() {
   ];
   if (els.deckTitleInput) els.deckTitleInput.value = "";
   if (els.deckDescInput) els.deckDescInput.value = "";
+  resetAiGenPanel();
   renderCustomDeckCardsBuilder();
   if (els.customDeckModal) els.customDeckModal.classList.remove("hidden");
   if (els.deckTitleInput) els.deckTitleInput.focus();
@@ -7967,6 +8206,20 @@ if (els.reminderSave) els.reminderSave.addEventListener("click", saveReminder);
 if (els.customDeckClose) els.customDeckClose.addEventListener("click", () => els.customDeckModal.classList.add("hidden"));
 if (els.customDeckCancel) els.customDeckCancel.addEventListener("click", () => els.customDeckModal.classList.add("hidden"));
 if (els.customDeckSave) els.customDeckSave.addEventListener("click", saveCustomDeck);
+if (els.aiGenGo) els.aiGenGo.addEventListener("click", generateAiCards);
+if (els.aiGenStop) {
+  els.aiGenStop.addEventListener("click", () => {
+    aiGenAbort?.abort();
+  });
+}
+if (els.aiGenKey) {
+  els.aiGenKey.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      generateAiCards();
+    }
+  });
+}
 if (els.builderAddCard) {
   els.builderAddCard.addEventListener("click", () => {
     syncCustomDeckDraftFromDom();
@@ -8104,7 +8357,9 @@ els.checkAnswerBtn.addEventListener("click", () => {
   else checkTypedAnswer();
 });
 els.btnAgain.addEventListener("click", () => grade("again"));
+els.btnHard.addEventListener("click", () => grade("hard"));
 els.btnGood.addEventListener("click", () => grade("good"));
+els.btnEasy.addEventListener("click", () => grade("easy"));
 
 function closeLevelPanel() {
   els.levelPanel.classList.add("hidden");
@@ -8228,9 +8483,9 @@ document.addEventListener("keydown", (e) => {
     if (current.type === "parsons") checkParsons();
     else if (current.type === "recall" || current.type === "predict") document.getElementById("recall-input")?.focus();
     else revealAnswer();
-  } else if (current?.revealed && (e.key === "1" || e.key === "2")) {
+  } else if (current?.revealed && ["1", "2", "3", "4"].includes(e.key)) {
     e.preventDefault();
-    grade(e.key === "1" ? "again" : "good");
+    grade({ 1: "again", 2: "hard", 3: "good", 4: "easy" }[e.key]);
   }
 });
 

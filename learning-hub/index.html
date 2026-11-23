@@ -157,8 +157,10 @@
       <button class="primary" id="btn-reveal">Show answer <kbd>Space</kbd></button>
       <button class="primary hidden" id="btn-check-answer" type="button">Check <kbd>Enter</kbd></button>
       <div class="grade hidden" id="grade-actions">
-        <button id="btn-again">Again <kbd>1</kbd></button>
-        <button id="btn-good">Got it <kbd>2</kbd></button>
+        <button id="btn-again" class="grade-btn g-again" type="button">Again <kbd>1</kbd><span class="grade-hint" data-hint="again"></span></button>
+        <button id="btn-hard" class="grade-btn g-hard" type="button">Hard <kbd>2</kbd><span class="grade-hint" data-hint="hard"></span></button>
+        <button id="btn-good" class="grade-btn g-good" type="button">Good <kbd>3</kbd><span class="grade-hint" data-hint="good"></span></button>
+        <button id="btn-easy" class="grade-btn g-easy" type="button">Easy <kbd>4</kbd><span class="grade-hint" data-hint="easy"></span></button>
       </div>
     </div>
   </section>
@@ -329,7 +331,28 @@
       <input id="deck-title-input" class="modal-input" placeholder="e.g. JavaScript Essentials, SQL Queries" maxlength="60">
       <label class="modal-label" for="deck-desc-input">Description</label>
       <input id="deck-desc-input" class="modal-input" placeholder="Brief summary of topics covered" maxlength="120">
-      
+
+      <div class="ai-gen" id="ai-gen">
+        <div class="ai-gen-head">
+          <span class="builder-title">✨ Generate cards with AI</span>
+          <span class="hint" id="ai-gen-status">Paste notes or a topic → draft cards</span>
+        </div>
+        <textarea id="ai-gen-notes" class="modal-textarea" rows="4" placeholder="Paste notes, a paragraph, or just a topic — e.g. &quot;Python dictionaries: keys, values, get(), iteration&quot;"></textarea>
+        <div class="ai-gen-row">
+          <label class="ai-gen-count-wrap" for="ai-gen-count">
+            <span>Cards</span>
+            <input id="ai-gen-count" class="modal-input ai-gen-count" type="number" min="3" max="20" value="10">
+          </label>
+          <button class="primary sm" id="ai-gen-go" type="button">✨ Generate</button>
+          <button class="ghost sm hidden" id="ai-gen-stop" type="button">Stop</button>
+        </div>
+        <div class="ai-gen-key hidden" id="ai-gen-key-row">
+          <input id="ai-gen-key" class="modal-input" type="password" placeholder="Paste your API key (saved for the AI Tutor too)" autocomplete="off">
+          <span class="hint">Free Gemini key: aistudio.google.com/apikey</span>
+        </div>
+        <p class="hint ai-gen-msg" id="ai-gen-msg"></p>
+      </div>
+
       <div class="deck-cards-builder">
         <div class="builder-head">
           <span class="builder-title">Cards in this deck</span>
