@@ -1003,10 +1003,13 @@ function updateSyncHint() {
   const hint = document.getElementById("home-hint");
   if (!hint) return;
   const code = "<code>data/python.js</code>";
+  const host = window.location.hostname;
+  const hosted = host !== "localhost" && host !== "127.0.0.1" && !host.endsWith(".ts.net");
   if (!profileOnline) {
-    hint.innerHTML =
-      `Cards live in ${code}. The profile server is unavailable — progress stays in this browser. ` +
-      "Start with <code>python serve.py</code> to save it.";
+    hint.innerHTML = hosted
+      ? `Cards live in ${code}. Progress, XP, and streaks save in this browser — use <strong>Export Backup</strong> in the profile menu to keep a copy.`
+      : `Cards live in ${code}. The profile server is unavailable — progress stays in this browser. ` +
+        "Start with <code>python serve.py</code> to save it.";
   } else if (profile.id) {
     hint.innerHTML = `Cards live in ${code}. Progress saves to this server under <strong>${escapeHtml(
       profile.name
