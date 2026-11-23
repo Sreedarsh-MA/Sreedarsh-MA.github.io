@@ -1,0 +1,388 @@
+// Video courses. Summaries and quizzes are written for pycards; each section links to the real lecture time.
+window.COURSES = [
+  {
+    id: "mosh-1h",
+    title: "Python Basics in 1 Hour",
+    channel: "Programming with Mosh",
+    teacher: "Mosh Hamedani",
+    videoId: "kqtD5dpn9C8",
+    minutes: 60,
+    level: "Beginner",
+    summary:
+      "A one-hour primer: first program, variables, input, type conversion, strings, arithmetic, comparisons, and if/while/for loops, closing with lists, list methods, range() and tuples. Every segment is a short demo you can retype, so it works well as a single sitting before you start the deck.",
+    learns: [
+      "Run a Python file and print output.",
+      "Store values in variables and read text from the terminal.",
+      "Convert between str, int and float before doing arithmetic.",
+      "Format output with f-strings and use common string methods.",
+      "Write if/while/for logic with comparison and logical operators.",
+      "Store data in lists and tuples, and loop over it with range().",
+    ],
+    topics: ["Basics", "Data types", "Collections"],
+    sections: [
+      {
+        h: "Your first program",
+        t: 75,
+        p: "What Python is used for, then the first print() program run from a file.",
+      },
+      {
+        h: "Variables and input",
+        t: 330,
+        p: "Variables are created by assignment. input('...') shows a prompt and returns the typed text.",
+      },
+      {
+        h: "Type conversion",
+        t: 648,
+        p: "Because input() always returns a string, int() and float() convert it before arithmetic; bool() and str() convert the other way.",
+      },
+      {
+        h: "Strings",
+        t: 1129,
+        p: "Strings are immutable sequences: indexing, len(), upper(), find(), replace(), and the `in` operator.",
+      },
+      {
+        h: "Arithmetic and precedence",
+        t: 1421,
+        p: "+ - * / // % ** follow normal precedence, parentheses override it, and augmented assignment updates a variable in place.",
+      },
+      {
+        h: "Comparisons, logical operators and if",
+        t: 1631,
+        p: "Build booleans with ==, !=, >, < and combine them with and/or/not. if/elif/else selects a branch, and indentation defines the block.",
+      },
+      {
+        h: "While loops",
+        t: 2502,
+        p: "A while loop repeats while its condition is true — the right tool when the number of repetitions is unknown.",
+      },
+      {
+        h: "Lists and list methods",
+        t: 2711,
+        p: "Lists hold ordered, changeable items. append(), insert(), remove(), pop(), clear() and len() cover most daily work.",
+      },
+      {
+        h: "For loops, range and tuples",
+        t: 3136,
+        p: "for walks over a sequence, range(start, stop, step) generates numbers, and tuples are lists that cannot be modified.",
+      },
+    ],
+    quiz: [
+      {
+        q: "What does `input()` return?",
+        options: ["An int", "A string", "A float", "The type the user typed"],
+        answer: 1,
+        why: "input() always returns text. Wrap it in int() or float() before doing math.",
+      },
+      {
+        q: "Which line creates an f-string?",
+        options: ['f"Total: {price}"', '"Total: ${price}"', 'format("Total: {price}")', '"Total: " + {price}'],
+        answer: 0,
+        why: "Prefix the literal with f, then put expressions inside braces.",
+      },
+      {
+        q: "What does `range(3)` produce?",
+        options: ["1, 2, 3", "0, 1, 2", "0, 1, 2, 3", "3"],
+        answer: 1,
+        why: "range starts at 0 by default and stops before the end value.",
+      },
+      {
+        q: "Which list method adds one item to the end?",
+        options: ["extend()", "append()", "insert()", "add()"],
+        answer: 1,
+        why: "append() adds a single item; extend() adds every item from another iterable; add() is a set method.",
+      },
+      {
+        q: "Which is true of tuples?",
+        options: ["They can grow with append()", "They are unordered", "They cannot be changed after creation", "They only hold numbers"],
+        answer: 2,
+        why: "Tuples are immutable: they keep their order but cannot be edited in place.",
+      },
+    ],
+  },
+  {
+    id: "fcc-python-full",
+    title: "Learn Python – Full Course for Beginners",
+    channel: "freeCodeCamp.org",
+    teacher: "Mike Dane",
+    videoId: "rfscVS0vtbw",
+    minutes: 267,
+    level: "Beginner",
+    summary:
+      "A keystroke-by-keystroke course that builds small programs — a calculator, Mad Libs, a guessing game, a translator and a multiple-choice quiz — to introduce every core construct. Slow and thorough, which makes it the safest pick if this is your first language.",
+    learns: [
+      "Install Python and PyCharm, and run a script from the editor.",
+      "Work with variables, strings, numbers and user input.",
+      "Store groups of values in lists, tuples and dictionaries.",
+      "Write if/elif/else, while and for loops, including nested loops.",
+      "Package logic in functions with parameters and return values.",
+      "Catch errors with try/except, and read or write files.",
+      "Import modules, install packages with pip, and define classes with inheritance.",
+    ],
+    topics: ["Basics", "Collections", "Functions", "Errors", "Files", "Modules", "Classes"],
+    sections: [
+      {
+        h: "Setup and first program",
+        t: 105,
+        p: "Installs Python and PyCharm, then runs Hello World and a print-based drawing to get comfortable with the editor and the terminal.",
+      },
+      {
+        h: "Variables, strings and numbers",
+        t: 906,
+        p: "Variables and data types, string concatenation and string functions, then number types and arithmetic.",
+      },
+      {
+        h: "Input and small programs",
+        t: 2906,
+        p: "input() gathers text; a basic calculator and Mad Libs show how input, variables and printing combine.",
+      },
+      {
+        h: "Lists, tuples and functions",
+        t: 3790,
+        p: "Lists and their functions, tuples, then functions, parameters and the return statement.",
+      },
+      {
+        h: "Conditionals, dictionaries and loops",
+        t: 6006,
+        p: "if/elif/else and comparisons, a better calculator, dictionaries, while loops with a guessing game, for loops, exponents and 2D lists.",
+      },
+      {
+        h: "Errors, files and modules",
+        t: 11057,
+        p: "try/except keeps a program alive after bad input; then reading and writing files, importing modules, and installing packages with pip.",
+      },
+      {
+        h: "Classes, objects and inheritance",
+        t: 13436,
+        p: "Classes and objects, a multiple-choice quiz project, object functions (methods), and inheritance — ending with the Python interpreter.",
+      },
+    ],
+    quiz: [
+      {
+        q: "What is a dictionary?",
+        options: ["An ordered list of values", "A collection of key/value pairs", "A tuple with names", "A function with many returns"],
+        answer: 1,
+        why: "Dictionaries map keys to values, so you can look up an entry by name instead of by position.",
+      },
+      {
+        q: "What is try/except for?",
+        options: ["Repeating code until it works", "Catching runtime errors so the program can continue", "Importing modules safely", "Converting strings to numbers"],
+        answer: 1,
+        why: "try runs risky code; except handles the error instead of crashing the program.",
+      },
+      {
+        q: "Which statement makes `math.sqrt` available?",
+        options: ["include math", "using math", "import math", "from math import sqrt only"],
+        answer: 2,
+        why: "import math loads the module; you then call math.sqrt(). `from math import sqrt` also works but 'only' is not Python syntax.",
+      },
+      {
+        q: "Which method runs when a new object is created?",
+        options: ["__new__", "__init__", "__call__", "start"],
+        answer: 1,
+        why: "__init__ is the initializer you write to set up attributes; __new__ creates the object but beginners rarely touch it.",
+      },
+      {
+        q: "Which call opens a file for reading?",
+        options: ['open("data.txt")', 'read("data.txt")', 'file("data.txt")', 'open("data.txt", "w")'],
+        answer: 0,
+        why: "The default mode is read. Mode \"w\" would truncate or create the file for writing.",
+      },
+    ],
+  },
+  {
+    id: "mosh-full",
+    title: "Python Full Course for Beginners",
+    channel: "Programming with Mosh",
+    teacher: "Mosh Hamedani",
+    videoId: "_uQrJ0TkZlc",
+    minutes: 374,
+    level: "Beginner → Intermediate",
+    summary:
+      "Six hours of tightly edited lessons that move from syntax to a working automation script, then two project demos (machine learning and a Django website) at the end. The code stays clean and idiomatic, so it doubles as a style reference once you know the basics.",
+    learns: [
+      "Set up Python 3 and see how a source file is executed.",
+      "Use variables, type conversion, strings, f-strings and arithmetic.",
+      "Control flow with if, while, for and nested loops.",
+      "Model data with lists, 2D lists, tuples, unpacking and dictionaries.",
+      "Write functions with parameters, keyword arguments and return values.",
+      "Handle exceptions, then organize code into classes and modules.",
+      "Use the standard library (random, directories) and install packages with pip.",
+    ],
+    topics: ["Basics", "Collections", "Functions", "Errors", "Modules", "Classes"],
+    sections: [
+      {
+        h: "Setup and first program",
+        t: 109,
+        p: "Installs Python 3, writes the first program, and explains what the interpreter does when a .py file runs.",
+      },
+      {
+        h: "Variables, input and type conversion",
+        t: 783,
+        p: "Names, primitive types, input(), and converting strings to numbers before arithmetic.",
+      },
+      {
+        h: "Strings",
+        t: 1771,
+        p: "Indexing, slicing, string methods, and formatted strings for readable output.",
+      },
+      {
+        h: "Operators and control flow",
+        t: 2913,
+        p: "Arithmetic and precedence, comparison and logical operators, if/elif/else, and a weight-converter exercise.",
+      },
+      {
+        h: "Loops and small games",
+        t: 4843,
+        p: "while loops with a guessing game and a car game, then for loops and nested loops.",
+      },
+      {
+        h: "Lists, tuples and dictionaries",
+        t: 6950,
+        p: "Lists, 2D lists, list methods, tuples, unpacking, dictionaries, and an emoji-converter demo.",
+      },
+      {
+        h: "Functions and exceptions",
+        t: 9031,
+        p: "Defining functions, parameters, keyword arguments, return values, and try/except error handling.",
+      },
+      {
+        h: "Classes, modules and pip",
+        t: 10906,
+        p: "Classes, constructors, inheritance, modules, packages, the random module, directories, and installing from PyPI.",
+      },
+      {
+        h: "Projects",
+        t: 14134,
+        p: "An automation project, a machine-learning demo, and a website built with Django.",
+      },
+    ],
+    quiz: [
+      {
+        q: 'Why does `int(input("Age: "))` fail when the user types "twenty"?',
+        options: ["input() cannot be wrapped", "int() raises ValueError because the text is not a number", "The prompt is invalid", "int() only accepts floats"],
+        answer: 1,
+        why: "int() only parses digits and signs; non-numeric text raises ValueError, which is why try/except is taught later in the course.",
+      },
+      {
+        q: "What does `class Dog(Animal):` mean?",
+        options: ["Dog is a copy of Animal", "Dog inherits from Animal", "Animal inherits from Dog", "Dog contains an Animal instance"],
+        answer: 1,
+        why: "The class in parentheses is the parent; Dog gets its attributes and methods and can override them.",
+      },
+      {
+        q: "Which loop fits when you don't know how many repetitions are needed?",
+        options: ["for", "while", "range", "try"],
+        answer: 1,
+        why: "while runs until its condition becomes false, which suits 'keep asking until the input is valid'.",
+      },
+      {
+        q: 'What does `f"Hi {name}"` do?',
+        options: ["Prints the braces literally", "Inserts the value of name into the string", "Formats name as a float", "Creates a file called name"],
+        answer: 1,
+        why: "Braces inside an f-string are replaced by the expression's value.",
+      },
+      {
+        q: "Where do third-party packages come from?",
+        options: ["pip installs them from PyPI", "Python ships every package", "They are copied from the standard library", "Django installs them automatically"],
+        answer: 0,
+        why: "pip fetches packages from the Python Package Index (PyPI) and installs them into your environment.",
+      },
+    ],
+  },
+  {
+    id: "cs50p",
+    title: "Harvard CS50's Introduction to Programming with Python",
+    channel: "freeCodeCamp.org",
+    teacher: "David J. Malan (Harvard)",
+    videoId: "nLRL_NcnK-4",
+    minutes: 958,
+    level: "Intermediate",
+    summary:
+      "Harvard's CS50P in one sitting: ten lectures that build from functions and loops to unit tests, regular expressions, file I/O and object-oriented design, with problem sets on the CS50 site between lectures. The most rigorous option here — slower, but it teaches how to test and debug, not just how to write syntax.",
+    learns: [
+      "Structure programs with functions, conditionals and loops.",
+      "Handle bad input with try/except instead of crashing.",
+      "Install and use third-party libraries with pip.",
+      "Write unit tests with pytest and read failing output.",
+      "Read and write files, including CSV and JSON data.",
+      "Match and validate text with regular expressions.",
+      "Model data with classes, objects, methods and properties.",
+      "Use type hints, argparse and other tools from the final lecture.",
+    ],
+    topics: ["Basics", "Functions", "Errors", "Files", "Modules", "Classes"],
+    sections: [
+      {
+        h: "Functions, variables and conditionals",
+        t: 288,
+        p: "Defining and calling functions, parameters, return values, scope, and if/elif/else with boolean expressions.",
+      },
+      {
+        h: "Loops and exceptions",
+        t: 9983,
+        p: "while and for loops, then try/except/else/finally to handle invalid input.",
+      },
+      {
+        h: "Libraries",
+        t: 17505,
+        p: "Importing modules, using sys, and installing third-party packages with pip.",
+      },
+      {
+        h: "Unit tests",
+        t: 22155,
+        p: "Writing tests with pytest, asserting behavior, and organizing test files.",
+      },
+      {
+        h: "File I/O",
+        t: 25222,
+        p: "Opening, reading and writing files, plus working with CSV and binary data.",
+      },
+      {
+        h: "Regular expressions",
+        t: 30752,
+        p: "Using re to validate, search, capture and clean text.",
+      },
+      {
+        h: "Object-oriented programming",
+        t: 38255,
+        p: "Classes, instances, methods, properties and inheritance in Python.",
+      },
+      {
+        h: "Et cetera",
+        t: 48527,
+        p: "Type hints, docstrings, argparse, unpacking, map/filter, and other practical tools to finish the course.",
+      },
+    ],
+    quiz: [
+      {
+        q: 'What does `sys.exit("No file")` do?',
+        options: ["Prints a message and keeps running", "Exits with a message on stderr and a non-zero status", "Raises ImportError", "Restarts the interpreter"],
+        answer: 1,
+        why: "sys.exit ends the program; a string argument is printed to stderr and the exit status is 1.",
+      },
+      {
+        q: 'Why prefer `with open("data.csv") as f:`?',
+        options: ["It runs faster", "It closes the file automatically, even after an error", "It converts the file to a list", "It prevents reading"],
+        answer: 1,
+        why: "The with block closes the file when it ends, so a crash cannot leave the handle open.",
+      },
+      {
+        q: "Which module handles regular expressions?",
+        options: ["regex", "re", "pyre", "string"],
+        answer: 1,
+        why: "re is the standard library module for regular expressions (re.search, re.match, re.sub).",
+      },
+      {
+        q: "What does pytest look for when collecting tests?",
+        options: ["Files named main.py", "Functions named test_*", "Classes named Test only", "print() calls"],
+        answer: 1,
+        why: "pytest discovers files named test_*.py and functions whose names start with test_.",
+      },
+      {
+        q: "In `class Point: def __init__(self, x):`, what is `self`?",
+        options: ["The class itself", "The new instance being initialized", "A required keyword argument", "The module"],
+        answer: 1,
+        why: "self is the instance; Python passes it automatically, which is why you write point = Point(3) and not Point(point, 3).",
+      },
+    ],
+  },
+];

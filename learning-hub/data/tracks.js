@@ -1,0 +1,56 @@
+// Learning tracks: guided paths that group existing lessons, courses,
+// projects, and repos into a curriculum. Steps reference items by {type, id};
+// progress is derived from the completion state of the referenced item.
+window.TRACKS = [
+  {
+    id: "foundations",
+    title: "Python Foundations",
+    short: "foundations",
+    icon: "🌱",
+    summary: "Zero to writing real programs: the core ideas in the order they build on each other.",
+    level: "Beginner",
+    steps: [
+      { type: "lesson", id: "values", note: "Types, truth, and how Python compares things" },
+      { type: "lesson", id: "collections", note: "Lists, dicts, and picking the right one" },
+      { type: "lesson", id: "loops", note: "Comprehensions, enumerate, zip" },
+      { type: "lesson", id: "functions", note: "Arguments, defaults, lambdas" },
+      { type: "course", id: "mosh-1h", note: "One-hour refresher on all of it" },
+      { type: "project", id: "guess", note: "Build a number guessing game" },
+    ],
+  },
+  {
+    id: "practical",
+    title: "Practical Python",
+    short: "practical",
+    icon: "🧰",
+    summary: "Errors, files, classes, and decorators — the tools you reach for in real scripts.",
+    level: "Intermediate",
+    steps: [
+      { type: "lesson", id: "idioms", note: "try/except, files, everyday patterns" },
+      { type: "lesson", id: "decorators", note: "Wrapping behavior without rewriting it" },
+      { type: "lesson", id: "oop", note: "Classes, dunder methods, dataclasses" },
+      { type: "course", id: "fcc-python-full", note: "Four-hour project-driven course" },
+      { type: "project", id: "wordcount", note: "Count words like a real tool" },
+      { type: "project", id: "expenses", note: "A tracker that saves itself" },
+      { type: "project", id: "grades", note: "Report grades from a CSV file" },
+    ],
+  },
+  {
+    id: "python",
+    title: "Python Roadmap",
+    short: "python",
+    icon: "🐍",
+    summary: "Six Python classes with quick checks, runnable code labs, and a mini-build each, then a CLI project.",
+    level: "Beginner",
+    kind: "roadmap",
+  },
+  {
+    id: "aiml",
+    title: "AI/ML Roadmap",
+    short: "aiml",
+    icon: "🧠",
+    summary: "Six math classes with practice problems, then seven ML stages: teach, test, unlock, repeat.",
+    level: "Advanced",
+    kind: "roadmap",
+  },
+];

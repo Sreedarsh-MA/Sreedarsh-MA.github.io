@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="dark">
+<title>Learning Hub · study &amp; code</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">learning<span>hub</span></div>
+  <nav class="topnav">
+    <button class="navlink active" id="nav-decks" type="button">Decks</button>
+    <button class="navlink" id="nav-learn" type="button">Learn</button>
+    <button class="navlink" id="nav-projects" type="button">Projects</button>
+    <button class="navlink" id="nav-game" type="button">Game</button>
+    <button class="navlink" id="nav-code" type="button">Code</button>
+    <button class="navlink" id="nav-chat" type="button">Chat</button>
+  </nav>
+  <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Toggle theme (Dark / Light / Sepia)" title="Toggle theme">🌙</button>
+  <div class="profile-wrap">
+    <button class="profile-chip" id="profile-chip" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="profile-panel">
+      <span class="profile-emoji" id="profile-emoji" aria-hidden="true"></span>
+      <span class="profile-dot" id="profile-dot"></span>
+      <span class="profile-name" id="profile-name">Set name</span>
+    </button>
+    <div class="profile-panel hidden" id="profile-panel">
+      <div class="profile-panel-head">
+        <span class="profile-panel-title">Profiles</span>
+        <span class="profile-status" id="profile-status">Loading…</span>
+      </div>
+      <div class="profile-card hidden" id="profile-card">
+        <div class="profile-card-top">
+          <button class="profile-avatar" id="profile-avatar" type="button" aria-label="Change avatar" title="Change avatar"></button>
+          <div class="profile-card-id">
+            <span class="profile-card-name" id="profile-card-name"></span>
+            <span class="profile-card-level" id="profile-card-level"></span>
+          </div>
+          <button class="profile-edit" id="profile-edit" type="button" aria-expanded="false" aria-controls="profile-avatar-picker">Edit</button>
+        </div>
+        <div class="profile-avatar-picker hidden" id="profile-avatar-picker"></div>
+        <div class="profile-card-stats">
+          <div class="profile-stat">
+            <span class="profile-stat-value" id="profile-stat-xp">0</span>
+            <span class="profile-stat-label">Total XP</span>
+          </div>
+          <div class="profile-stat">
+            <span class="profile-stat-value" id="profile-stat-rank">Bronze</span>
+            <span class="profile-stat-label">Rank</span>
+          </div>
+          <div class="profile-stat">
+            <span class="profile-stat-value" id="profile-stat-badges">0</span>
+            <span class="profile-stat-label">Badges</span>
+          </div>
+          <div class="profile-stat">
+            <span class="profile-stat-value" id="profile-stat-streak">0</span>
+            <span class="profile-stat-label">Day streak</span>
+          </div>
+        </div>
+        <button class="profile-view" id="profile-view" type="button">View profile</button>
+      </div>
+      <form class="profile-form" id="profile-form">
+        <input id="profile-input" type="text" maxlength="40" placeholder="Your name" autocomplete="off" spellcheck="false">
+        <button class="primary" type="submit" id="profile-save">Save</button>
+      </form>
+      <div class="profile-list" id="profile-list"></div>
+      <div class="profile-backup">
+        <span class="profile-backup-title">Backup &amp; Sync</span>
+        <div class="profile-backup-btns">
+          <button class="ghost sm" id="btn-export-backup" type="button" title="Download your progress as JSON">📥 Export Backup</button>
+          <label class="btn ghost sm profile-import-label" for="import-backup-file" title="Restore progress from JSON file">📤 Import Backup</label>
+          <input type="file" id="import-backup-file" accept=".json" class="hidden">
+        </div>
+        <span class="profile-backup-msg" id="profile-backup-msg"></span>
+      </div>
+      <p class="profile-hint">Study progress, notes, XP, and streaks save to this server. Chat and code stay in this browser.</p>
+    </div>
+  </div>
+  <div class="level-wrap">
+    <button class="level-chip" id="level-chip" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="level-panel">
+      <span class="level-tag" id="level-tag">Lv 1</span>
+      <span class="level-xp-track"><span class="level-xp-fill" id="level-xp-fill"></span></span>
+      <span class="level-streak" id="level-streak" title="Day streak">0d</span>
+    </button>
+    <div class="level-panel hidden" id="level-panel">
+      <div class="level-panel-head">
+        <span class="level-panel-title" id="level-panel-title">Level 1</span>
+        <span class="level-panel-xp" id="level-panel-xp">0 / 100 XP</span>
+      </div>
+      <div class="level-xp-track big"><span class="level-xp-fill" id="level-panel-fill"></span></div>
+      <div class="level-stats" id="level-stats"></div>
+      
+      <div class="heatmap-card">
+        <div class="heatmap-head">
+          <span class="heatmap-title">Study Activity</span>
+          <span class="heatmap-meta" id="heatmap-meta">Past 12 weeks</span>
+        </div>
+        <div class="heatmap-grid" id="heatmap-grid" title="Review activity"></div>
+        <div class="heatmap-legend">
+          <span>Less</span>
+          <span class="cell lvl-0"></span>
+          <span class="cell lvl-1"></span>
+          <span class="cell lvl-2"></span>
+          <span class="cell lvl-3"></span>
+          <span class="cell lvl-4"></span>
+          <span>More</span>
+        </div>
+      </div>
+
+      <div class="level-panel-actions">
+        <button class="ghost sm" id="btn-share-milestone" type="button">🚀 Share Milestone Card</button>
+      </div>
+
+      <div class="badge-list" id="badge-list"></div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section id="view-home" class="view">
+    <div class="home-head">
+      <h1>Pick a deck</h1>
+      <div class="home-deck-btns">
+        <button class="ghost sm" id="btn-daily-challenge" type="button">🎯 Daily Challenge</button>
+        <button class="ghost sm" id="btn-create-deck" type="button">+ Custom Deck</button>
+        <button class="ghost sm" id="btn-import-deck" type="button">📥 Import Deck</button>
+      </div>
+    </div>
+    <div class="deck-list" id="deck-list"></div>
+    <p class="hint" id="home-hint">Cards live in <code>data/python.js</code>. Progress saves to this server when you set a name.</p>
+  </section>
+
+  <section id="view-deck" class="view hidden">
+    <div id="deck-detail"></div>
+  </section>
+
+  <section id="view-study" class="view hidden">
+    <div class="study-bar">
+      <button class="ghost" id="btn-back">&larr; Decks</button>
+      <span id="study-progress"></span>
+    </div>
+    <div class="card" id="card">
+      <div class="topic" id="card-topic"></div>
+      <div class="question" id="card-q"></div>
+      <div class="answer hidden" id="card-a"></div>
+    </div>
+    <div class="actions">
+      <button class="primary" id="btn-reveal">Show answer <kbd>Space</kbd></button>
+      <div class="grade hidden" id="grade-actions">
+        <button id="btn-again">Again <kbd>1</kbd></button>
+        <button id="btn-good">Got it <kbd>2</kbd></button>
+      </div>
+    </div>
+  </section>
+
+  <section id="view-done" class="view done-view hidden">
+    <h2 id="done-title"></h2>
+    <p id="done-text"></p>
+    <div class="done-actions" id="done-actions"></div>
+  </section>
+
+  <section id="view-learn" class="view hidden">
+    <div class="learn-head">
+      <div>
+        <h1>Learn</h1>
+        <p class="hint">One topic, five ways: guided lessons, video courses, curated GitHub repos, a one-on-one Python tutor, or today's plan.</p>
+      </div>
+      <div class="learn-tabs" id="learn-tabs" role="tablist">
+        <button class="learn-tab active" data-mode="lessons" type="button" role="tab">Lessons</button>
+        <button class="learn-tab" data-mode="courses" type="button" role="tab">Courses</button>
+        <button class="learn-tab" data-mode="github" type="button" role="tab">GitHub</button>
+        <button class="learn-tab" data-mode="tracks" type="button" role="tab">Tracks</button>
+        <button class="learn-tab" data-mode="labs" type="button" role="tab">Labs</button>
+        <button class="learn-tab" data-mode="tutor" type="button" role="tab">Tutor</button>
+        <button class="learn-tab" data-mode="plan" type="button" role="tab">Today's plan</button>
+      </div>
+    </div>
+    <div id="learn-panel"></div>
+  </section>
+
+  <section id="view-projects" class="view hidden">
+    <div class="learn-head">
+      <div>
+        <h1>Projects</h1>
+        <p class="hint">Build one thing at a time. Each project opens in the playground with a starter and a checklist.</p>
+      </div>
+    </div>
+    <div id="project-panel"></div>
+  </section>
+
+  <section id="view-game" class="view hidden">
+    <div class="game-head">
+      <div>
+        <h1 id="case-title">Case File: The Missing Lark</h1>
+        <p class="hint" id="case-desc">A 1723 violin vanished from the vault during the Ashgrove gala. Read the files, write Python, name the thief.</p>
+      </div>
+      <div class="case-head-right">
+        <select id="case-select" class="case-select" aria-label="Select mystery case">
+          <option value="lark">Case 1 · The Missing Lark</option>
+          <option value="breach">Case 2 · Ashgrove Data Breach</option>
+        </select>
+        <span class="case-progress" id="case-progress">0 / 4 clues</span>
+      </div>
+    </div>
+    <div class="case-file-card">
+      <div class="case-files-head">
+        <span class="case-files-title">Case files</span>
+        <div class="case-tabs" id="case-tabs">
+          <button class="case-tab active" data-file="guests" type="button">guests</button>
+          <button class="case-tab" data-file="access_log" type="button">access_log</button>
+          <button class="case-tab" data-file="payments" type="button">payments</button>
+          <button class="case-tab" data-file="staff" type="button">staff</button>
+        </div>
+      </div>
+      <div class="case-table-wrap" id="case-table"></div>
+    </div>
+    <div class="case-clue-tabs" id="case-clue-tabs" role="tablist"></div>
+    <div class="case-clue" id="case-clue"></div>
+    <div class="case-final hidden" id="case-final">
+      <label class="case-final-label" for="case-suspect">Ready to close the case? Name the thief.</label>
+      <div class="case-final-row">
+        <input id="case-suspect" type="text" placeholder="Full name as it appears in guests" autocomplete="off" spellcheck="false">
+        <button class="primary" id="case-accuse" type="button">Accuse</button>
+      </div>
+      <p class="case-final-msg" id="case-final-msg" aria-live="polite"></p>
+    </div>
+    <textarea id="case-editor" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Case code editor"></textarea>
+    <div class="case-actions">
+      <button class="ghost" id="case-hint" type="button">Show hint</button>
+      <button class="ghost hidden" id="case-share" type="button">🏆 Share Case Achievement</button>
+      <button class="primary" id="case-run" type="button">Run &amp; check <kbd>Ctrl&#9166;</kbd></button>
+    </div>
+    <div class="case-output hidden" id="case-output" aria-live="polite"></div>
+    <p class="hint">Your code runs in the browser via Pyodide with the case files already loaded as Python lists of dicts. Clues award XP; the closing accusation awards more.</p>
+  </section>
+
+  <section id="view-code" class="view hidden">
+    <div class="code-head">
+      <div class="lang-tabs" id="lang-tabs">
+        <button class="lang-tab" data-lang="html" type="button">HTML</button>
+        <button class="lang-tab" data-lang="js" type="button">JavaScript</button>
+        <button class="lang-tab" data-lang="python" type="button">Python</button>
+        <button class="lang-tab" data-lang="java" type="button">Java</button>
+      </div>
+      <div class="code-actions">
+        <button class="ghost hidden" id="btn-check" type="button">Check</button>
+        <button class="ghost" id="btn-reset-snippet" type="button">Reset</button>
+        <button class="primary" id="btn-run" type="button">Run <kbd>Ctrl&#9166;</kbd></button>
+      </div>
+    </div>
+    <textarea id="code-editor" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Code editor"></textarea>
+    <div class="output">
+      <div class="output-head">
+        <span>Output</span>
+        <span class="run-status" id="run-status"></span>
+      </div>
+      <pre class="output-text" id="output-text">Run the code to see output here.</pre>
+      <div class="test-results hidden" id="test-results" aria-live="polite"></div>
+      <iframe class="html-preview hidden" id="html-preview" sandbox="allow-scripts allow-modals"></iframe>
+    </div>
+    <p class="hint">Python runs in your browser via Pyodide. Java runs on the public Judge0 service at ce.judge0.com. HTML and JavaScript run locally.</p>
+  </section>
+
+  <section id="view-chat" class="view hidden">
+    <div class="chat-web-notice hidden" id="chat-web-notice"></div>
+    <div class="memory-card hidden" id="memory-card">
+      <div class="memory-head">
+        <div>
+          <div class="chat-title">Memory</div>
+          <p class="memory-sub">Chat and the tutor both read this. Everything stays in this browser.</p>
+        </div>
+        <button class="ghost" id="btn-memory-close" type="button">Close</button>
+      </div>
+      <div class="memory-known" id="memory-known"></div>
+      <form class="memory-add" id="memory-form">
+        <input id="memory-input" type="text" maxlength="200" placeholder="Add something to remember — a goal, a weak spot, a preference…" autocomplete="off" aria-label="New memory note">
+        <button class="primary" type="submit">Save</button>
+      </form>
+      <div class="memory-notes" id="memory-notes"></div>
+    </div>
+    <div class="chat-card">
+      <div class="chat-head">
+        <div class="chat-title">Python coach</div>
+        <div class="chat-controls">
+          <select id="chat-provider" aria-label="Chat provider">
+            <option value="gemini">Google Gemini · direct</option>
+            <option value="ollama">Ollama · local</option>
+            <option value="openrouter">OpenRouter · online</option>
+            <option value="nvidia">NVIDIA NIM · proxy</option>
+          </select>
+          <button class="ghost" id="btn-memory" type="button">Memory</button>
+          <button class="ghost" id="btn-clear-chat" type="button">Clear</button>
+        </div>
+      </div>
+      <div class="chat-config">
+        <select id="chat-model" aria-label="Model"></select>
+        <input id="chat-key" class="hidden" type="password" placeholder="API key" autocomplete="off" spellcheck="false" aria-label="API key">
+      </div>
+      <div class="chat-messages" id="chat-messages"></div>
+      <div class="chat-composer">
+        <textarea id="chat-input" rows="1" placeholder="Ask or paste code…"></textarea>
+        <button class="primary" id="btn-send-chat" type="button">Send</button>
+      </div>
+    </div>
+    <p class="hint" id="chat-hint"></p>
+  </section>
+</main>
+
+<!-- Modals -->
+<div class="modal-backdrop hidden" id="custom-deck-modal">
+  <div class="modal-card">
+    <div class="modal-head">
+      <span class="modal-title">Create Custom Deck</span>
+      <button class="modal-close" id="custom-deck-close" type="button">&times;</button>
+    </div>
+    <div class="modal-body">
+      <label class="modal-label" for="deck-title-input">Deck Title</label>
+      <input id="deck-title-input" class="modal-input" placeholder="e.g. JavaScript Essentials, SQL Queries" maxlength="60">
+      <label class="modal-label" for="deck-desc-input">Description</label>
+      <input id="deck-desc-input" class="modal-input" placeholder="Brief summary of topics covered" maxlength="120">
+      
+      <div class="deck-cards-builder">
+        <div class="builder-head">
+          <span class="builder-title">Cards in this deck</span>
+          <button class="ghost sm" id="builder-add-card" type="button">+ Add Card</button>
+        </div>
+        <div class="builder-cards-list" id="builder-cards-list"></div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="ghost" id="custom-deck-cancel" type="button">Cancel</button>
+      <button class="primary" id="custom-deck-save" type="button">Save Deck</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop hidden" id="import-deck-modal">
+  <div class="modal-card">
+    <div class="modal-head">
+      <span class="modal-title">Import Flashcard Deck</span>
+      <button class="modal-close" id="import-deck-close" type="button">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p class="hint">Upload a <strong>JSON</strong>, <strong>CSV</strong>, or Anki export (<strong>.txt / tab-separated</strong>), or paste cards below.</p>
+      <div class="file-upload-row">
+        <input type="file" id="deck-file-input" accept=".json,.csv,.tsv,.txt" class="modal-file-input">
+      </div>
+      <label class="modal-label" for="import-deck-title">Deck Name</label>
+      <input id="import-deck-title" class="modal-input" placeholder="Imported Deck Name">
+      <label class="modal-label" for="import-paste-area">Or Paste Text (JSON or "Question &lt;Tab/Comma&gt; Answer")</label>
+      <textarea id="import-paste-area" class="modal-textarea" rows="5" placeholder="What is a closure?	A function that remembers its outer variables.
+What is a generator?	A function using yield to produce values on demand."></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="ghost" id="import-deck-cancel" type="button">Cancel</button>
+      <button class="primary" id="import-deck-submit" type="button">Import Deck</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop hidden" id="milestone-modal">
+  <div class="modal-card milestone-card">
+    <div class="modal-head">
+      <span class="modal-title">Share Milestone</span>
+      <button class="modal-close" id="milestone-close" type="button">&times;</button>
+    </div>
+    <div class="milestone-body">
+      <div class="milestone-canvas-wrap">
+        <canvas id="milestone-canvas" width="1200" height="630"></canvas>
+      </div>
+      <p class="milestone-text-preview" id="milestone-text-preview"></p>
+    </div>
+    <div class="modal-actions">
+      <button class="ghost" id="milestone-copy" type="button">📋 Copy Text</button>
+      <button class="primary" id="milestone-download" type="button">📥 Download Image</button>
+    </div>
+  </div>
+</div>
+
+<div class="xp-toast hidden" id="xp-toast" role="status" aria-live="polite"></div>
+
+<script src="data/python.js"></script>
+<script src="data/lessons.js"></script>
+<script src="data/courses.js"></script>
+<script src="data/github.js"></script>
+<script src="data/tracks.js"></script>
+<script src="data/roadmap.js"></script>
+<script src="data/python-roadmap.js"></script>
+<script src="data/python-labs.js"></script>
+<script src="data/tips.js"></script>
+<script src="data/labs.js"></script>
+<script src="data/projects.js"></script>
+<script src="data/challenges.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>HTML preview</title>
+</head>
+<body>
+<script>
+// Sandboxed HTML preview. The parent posts { type: "preview", html } and we
+// render it. This file is served with a relaxed CSP (see serve.py) because
+// user HTML may contain inline scripts; the iframe sandbox (no allow-same-origin)
+// keeps it isolated from the app regardless.
+window.addEventListener("message", function (e) {
+  if (e.source !== window.parent) return;
+  var msg = e.data;
+  if (!msg || msg.type !== "preview" || typeof msg.html !== "string") return;
+  document.open();
+  document.write(msg.html);
+  document.close();
+});
+</script>
+</body>
+</html>
