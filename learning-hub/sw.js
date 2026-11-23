@@ -1,5 +1,5 @@
-// Learning Hub service worker — offline app shell + runtime CDN cache.
-const VERSION = "learnhub-v1";
+﻿// Learning Hub service worker â€” offline app shell + runtime CDN cache.
+const VERSION = "learnhub-v2";
 const SCOPE = self.registration.scope;
 
 const SHELL = [
@@ -50,7 +50,7 @@ self.addEventListener("fetch", (e) => {
   if (req.method !== "GET") return;
   const url = new URL(req.url);
 
-  // Never cache API calls (profiles, proxies) — they must hit the server.
+  // Never cache API calls (profiles, proxies) â€” they must hit the server.
   if (url.pathname.includes("/api/")) return;
 
   // Navigations: network first, fall back to the cached shell (offline).
