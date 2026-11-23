@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#0b0f17"/>
+  <rect x="104" y="150" width="240" height="160" rx="20" fill="#172033" transform="rotate(-8 224 230)"/>
+  <rect x="150" y="170" width="250" height="170" rx="22" fill="#1d2a44"/>
+  <rect x="150" y="170" width="250" height="170" rx="22" fill="none" stroke="#6ea1ff" stroke-width="10"/>
+  <text x="275" y="292" font-family="Segoe UI, Arial, sans-serif" font-size="110" font-weight="700" fill="#6ea1ff" text-anchor="middle">L</text>
+  <circle cx="368" cy="330" r="52" fill="#7ee0a3"/>
+  <path d="M344 330 l18 18 l34 -36" fill="none" stroke="#0b0f17" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

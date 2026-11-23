@@ -4,8 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#0b0f17">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
 <title>Learning Hub · study &amp; code</title>
-<link rel="icon" href="data:,">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -111,6 +114,10 @@
 
       <div class="level-panel-actions">
         <button class="ghost sm" id="btn-share-milestone" type="button">🚀 Share Milestone Card</button>
+        <button class="ghost sm" id="btn-shop" type="button">🛍️ XP Shop</button>
+        <button class="ghost sm" id="btn-sound" type="button" aria-pressed="true">🔊 Sound</button>
+        <button class="ghost sm" id="btn-reminder" type="button">⏰ Reminder</button>
+        <button class="ghost sm hidden" id="btn-install" type="button">📲 Install app</button>
       </div>
 
       <div class="badge-list" id="badge-list"></div>
@@ -148,6 +155,7 @@
     </div>
     <div class="actions">
       <button class="primary" id="btn-reveal">Show answer <kbd>Space</kbd></button>
+      <button class="primary hidden" id="btn-check-answer" type="button">Check <kbd>Enter</kbd></button>
       <div class="grade hidden" id="grade-actions">
         <button id="btn-again">Again <kbd>1</kbd></button>
         <button id="btn-good">Got it <kbd>2</kbd></button>
@@ -217,6 +225,7 @@
       <div class="case-table-wrap" id="case-table"></div>
     </div>
     <div class="case-clue-tabs" id="case-clue-tabs" role="tablist"></div>
+    <div class="case-evidence" id="case-evidence"></div>
     <div class="case-clue" id="case-clue"></div>
     <div class="case-final hidden" id="case-final">
       <label class="case-final-label" for="case-suspect">Ready to close the case? Name the thief.</label>
@@ -379,6 +388,43 @@ What is a generator?	A function using yield to produce values on demand."></text
   </div>
 </div>
 
+<div class="modal-backdrop hidden" id="onboard-modal">
+  <div class="modal-card onboard-card">
+    <div class="onboard-body" id="onboard-body"></div>
+  </div>
+</div>
+
+<div class="modal-backdrop hidden" id="shop-modal">
+  <div class="modal-card shop-card">
+    <div class="modal-head">
+      <span class="modal-title">🛍️ XP Shop</span>
+      <button class="modal-close" id="shop-close" type="button">&times;</button>
+    </div>
+    <div class="shop-gems">💎 <span id="shop-gems">0</span> gems · earn gems from level-ups, cases, challenges &amp; quests</div>
+    <div class="shop-grid" id="shop-grid"></div>
+  </div>
+</div>
+
+<div class="modal-backdrop hidden" id="reminder-modal">
+  <div class="modal-card">
+    <div class="modal-head">
+      <span class="modal-title">⏰ Daily study reminder</span>
+      <button class="modal-close" id="reminder-close" type="button">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p class="hint">While the app is open (or installed), it can nudge you at your chosen time if you haven't studied yet today.</p>
+      <label class="modal-label" for="reminder-time">Remind me at</label>
+      <input id="reminder-time" class="modal-input" type="time" value="19:00">
+      <label class="reminder-enable"><input type="checkbox" id="reminder-enabled"> Enable daily reminder</label>
+      <p class="hint" id="reminder-status"></p>
+    </div>
+    <div class="modal-actions">
+      <button class="ghost" id="reminder-cancel" type="button">Cancel</button>
+      <button class="primary" id="reminder-save" type="button">Save</button>
+    </div>
+  </div>
+</div>
+
 <div class="xp-toast hidden" id="xp-toast" role="status" aria-live="polite"></div>
 
 <script src="data/python.js"></script>
@@ -393,6 +439,10 @@ What is a generator?	A function using yield to produce values on demand."></text
 <script src="data/labs.js"></script>
 <script src="data/projects.js"></script>
 <script src="data/challenges.js"></script>
+<script src="data/quests.js"></script>
+<script src="data/shop.js"></script>
+<script src="data/cases-extra.js"></script>
+<script src="juice.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

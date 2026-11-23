@@ -58,6 +58,7 @@ const els = {
   cardQ: document.getElementById("card-q"),
   cardA: document.getElementById("card-a"),
   reveal: document.getElementById("btn-reveal"),
+  checkAnswerBtn: document.getElementById("btn-check-answer"),
   gradeWrap: document.getElementById("grade-actions"),
   btnAgain: document.getElementById("btn-again"),
   btnGood: document.getElementById("btn-good"),
@@ -143,6 +144,24 @@ const els = {
   caseTitle: document.getElementById("case-title"),
   caseDesc: document.getElementById("case-desc"),
   caseShare: document.getElementById("case-share"),
+  caseEvidence: document.getElementById("case-evidence"),
+  shopModal: document.getElementById("shop-modal"),
+  shopClose: document.getElementById("shop-close"),
+  shopGems: document.getElementById("shop-gems"),
+  shopGrid: document.getElementById("shop-grid"),
+  btnShop: document.getElementById("btn-shop"),
+  btnSound: document.getElementById("btn-sound"),
+  btnReminder: document.getElementById("btn-reminder"),
+  btnInstall: document.getElementById("btn-install"),
+  onboardModal: document.getElementById("onboard-modal"),
+  onboardBody: document.getElementById("onboard-body"),
+  reminderModal: document.getElementById("reminder-modal"),
+  reminderClose: document.getElementById("reminder-close"),
+  reminderCancel: document.getElementById("reminder-cancel"),
+  reminderSave: document.getElementById("reminder-save"),
+  reminderTime: document.getElementById("reminder-time"),
+  reminderEnabled: document.getElementById("reminder-enabled"),
+  reminderStatus: document.getElementById("reminder-status"),
 };
 
 let store = loadStore();
@@ -436,6 +455,15 @@ function emptyStore() {
     labs: {},
     roadmaps: {},
     theme: "dark",
+    sound: true,
+    gems: 0,
+    owned: ["frame-bronze", "title-newcomer"],
+    frame: "frame-bronze",
+    title: "title-newcomer",
+    quests: { date: todayKey(), baseline: {}, done: {}, claimed: false },
+    onboarded: false,
+    goal: "",
+    reminder: { enabled: false, time: "19:00", lastFired: null },
   };
 }
 
@@ -469,6 +497,14 @@ function normalizeStore(parsed) {
   const whole = (value) => (Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0);
   const larkCase = parsed.cases?.lark || parsed.case || { solved: {}, done: false };
   const breachCase = parsed.cases?.breach || { solved: {}, done: false };
+  const cases = { lark: larkCase, breach: breachCase };
+  if (parsed.cases && typeof parsed.cases === "object") {
+    for (const [key, value] of Object.entries(parsed.cases)) {
+      if (value && typeof value === "object" && !cases[key]) {
+        cases[key] = { solved: value.solved || {}, done: !!value.done };
+      }
+    }
+  }
   const data = {
     progress: parsed.progress && typeof parsed.progress === "object" ? parsed.progress : {},
     stats: parsed.stats && typeof parsed.stats === "object" ? parsed.stats : { date: todayKey(), reviewed: 0 },
@@ -503,18 +539,31 @@ function normalizeStore(parsed) {
         : { date: todayKey(), done: false, code: "" },
     challengesDone: whole(parsed.challengesDone),
     avatar: AVATARS.includes(parsed.avatar) ? parsed.avatar : AVATARS[0],
-    case: larkCase,
-    cases: {
-      lark: larkCase,
-      breach: breachCase,
-    },
+    case: cases.lark,
+    cases,
     customDecks: Array.isArray(parsed.customDecks)
       ? parsed.customDecks.filter((d) => d && d.id && Array.isArray(d.cards))
       : [],
     history: parsed.history && typeof parsed.history === "object" ? parsed.history : {},
     labs: parsed.labs && typeof parsed.labs === "object" ? parsed.labs : {},
     roadmaps: normalizeRoadmaps(parsed),
-    theme: ["dark", "light", "sepia"].includes(parsed.theme) ? parsed.theme : "dark",
+    theme: ["dark", "light", "sepia", "midnight", "forest"].includes(parsed.theme) ? parsed.theme : "dark",
+    sound: parsed.sound !== false,
+    gems: whole(parsed.gems),
+    owned: Array.isArray(parsed.owned) ? parsed.owned.filter((x) => typeof x === "string") : ["frame-bronze", "title-newcomer"],
+    frame: typeof parsed.frame === "string" ? parsed.frame : "frame-bronze",
+    title: typeof parsed.title === "string" ? parsed.title : "title-newcomer",
+    quests:
+      parsed.quests?.date === todayKey() && parsed.quests.baseline
+        ? { date: todayKey(), baseline: parsed.quests.baseline, done: parsed.quests.done || {}, claimed: !!parsed.quests.claimed }
+        : { date: todayKey(), baseline: questBaseline(parsed), done: {}, claimed: false },
+    onboarded: !!parsed.onboarded,
+    goal: typeof parsed.goal === "string" ? parsed.goal : "",
+    reminder: {
+      enabled: !!parsed.reminder?.enabled,
+      time: typeof parsed.reminder?.time === "string" ? parsed.reminder.time : "19:00",
+      lastFired: typeof parsed.reminder?.lastFired === "string" ? parsed.reminder.lastFired : null,
+    },
   };
   if (data.stats.date !== todayKey()) data.stats = { date: todayKey(), reviewed: 0 };
   return data;
@@ -752,7 +801,7 @@ function renderLevelChip() {
   const pct = (info.into / info.need) * 100;
   els.levelTag.textContent = `Lv ${info.level}`;
   els.levelFill.style.width = `${pct}%`;
-  els.levelStreak.textContent = `${streak}d`;
+  els.levelStreak.textContent = streak >= 3 ? `🔥${streak}d` : `${streak}d`;
   const freezes = store.freezes ?? 0;
   els.levelChip.title = `Level ${info.level} · ${info.into}/${info.need} XP · ${streak}-day streak${freezes ? ` · ❄️ ${freezes} freeze${freezes === 1 ? "" : "s"}` : ""}`;
   els.levelChip.setAttribute(
@@ -830,6 +879,7 @@ function updateStats() {
   renderLevelChip();
   renderLevelPanel();
   renderProfileCard();
+  refreshCaseOptions();
 }
 
 let toastTimer = 0;
@@ -862,14 +912,18 @@ function addXp(amount) {
 
   const after = levelInfo();
   const leveledUp = after.level > beforeLevel;
-  if (leveledUp && (store.freezes ?? 0) < MAX_FREEZES) {
-    store.freezes = (store.freezes ?? 0) + 1;
+  if (leveledUp) {
+    if ((store.freezes ?? 0) < MAX_FREEZES) store.freezes = (store.freezes ?? 0) + 1;
+    store.gems = (store.gems ?? 0) + 10;
     saveStore();
+    Juice.confetti();
+    Juice.sound("level");
   }
+  checkQuests();
   const freshBadges = badgeList()
     .filter((badge) => badge.earned && !beforeBadges.has(badge.id))
     .map((badge) => badge.label);
-  if (leveledUp && (store.freezes ?? 0) > 0) freshBadges.push("❄️ +1 streak freeze");
+  if (leveledUp) freshBadges.push("❄️ +1 freeze · 💎 +10");
   showXpToast(amount, leveledUp ? after.level : 0, freshBadges);
 }
 
@@ -952,8 +1006,10 @@ function renderProfileCard() {
   const rank = rankInfo(info.level);
   const earned = badgeList().filter((badge) => badge.earned).length;
   els.profileAvatar.textContent = store.avatar || AVATARS[0];
+  els.profileAvatar.className = `profile-avatar ${store.frame || "frame-bronze"}`;
   els.profileCardName.textContent = profile.name;
-  els.profileCardLevel.textContent = `Level ${info.level}`;
+  const titleName = shopItem(store.title)?.name;
+  els.profileCardLevel.textContent = `Level ${info.level}${titleName && store.title !== "title-newcomer" ? ` · ${titleName}` : ""}`;
   els.profileStatXp.textContent = String(store.xp ?? 0);
   els.profileStatRank.textContent = rank.label;
   els.profileStatRank.className = `profile-stat-value rank-${rank.cls}`;
@@ -1465,32 +1521,172 @@ function nextCard() {
   }
 
   const card = session.queue[0];
-  current = { card, revealed: false };
+  const type = card.type || "classic";
+  current = { card, revealed: false, type };
 
   els.cardTopic.textContent = card.t ?? "";
   els.cardTopic.classList.toggle("hidden", !card.t);
-  els.cardQ.innerHTML = fmt(card.q);
-  els.cardA.innerHTML = fmt(card.a);
-  els.cardA.classList.add("hidden");
-  els.reveal.classList.remove("hidden");
   els.gradeWrap.classList.add("hidden");
+  els.checkAnswerBtn.classList.add("hidden");
   els.studyProgress.textContent = `${session.queue.length} left`;
+
+  if (type === "recall" || type === "predict") {
+    els.cardQ.innerHTML =
+      fmt(card.q) +
+      `<input id="recall-input" class="recall-input" type="text" autocomplete="off" spellcheck="false" placeholder="${
+        type === "predict" ? "Type the exact output…" : "Type your answer…"
+      }" aria-label="Your answer">`;
+    els.cardA.innerHTML = "";
+    els.cardA.classList.add("hidden");
+    els.reveal.classList.add("hidden");
+    els.checkAnswerBtn.classList.remove("hidden");
+    const input = document.getElementById("recall-input");
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        checkTypedAnswer();
+      }
+    });
+    setTimeout(() => input.focus(), 60);
+  } else if (type === "parsons") {
+    current.pool = shuffleIndexes(card.lines.length);
+    current.order = [];
+    els.cardQ.innerHTML = fmt(card.q);
+    els.cardA.classList.remove("hidden");
+    els.reveal.classList.add("hidden");
+    els.checkAnswerBtn.classList.remove("hidden");
+    renderParsons();
+  } else {
+    els.cardQ.innerHTML = fmt(card.q);
+    els.cardA.innerHTML = fmt(card.a);
+    els.cardA.classList.add("hidden");
+    els.reveal.classList.remove("hidden");
+  }
 
   els.card.classList.remove("pop");
   void els.card.offsetWidth;
   els.card.classList.add("pop");
 }
 
+function shuffleIndexes(n) {
+  const a = Array.from({ length: n }, (_, i) => i);
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  if (n > 1 && a.every((v, i) => v === i)) [a[0], a[1]] = [a[1], a[0]];
+  return a;
+}
+
+function normAnswer(s) {
+  return String(s).trim().toLowerCase().replace(/^`|`$/g, "").replace(/\s+/g, " ");
+}
+
+function answerAccepts(input, card) {
+  const n = normAnswer(input);
+  const compact = n.replace(/\s/g, "");
+  return [card.a, ...(card.alt ?? [])].some((opt) => {
+    const o = normAnswer(opt);
+    return n === o || compact === o.replace(/\s/g, "");
+  });
+}
+
+function checkTypedAnswer() {
+  if (!current || current.revealed) return;
+  const input = document.getElementById("recall-input");
+  if (!input || !input.value.trim()) {
+    input?.focus();
+    return;
+  }
+  const ok = answerAccepts(input.value, current.card);
+  current.revealed = true;
+  input.disabled = true;
+  els.cardA.innerHTML = ok
+    ? `<span class="recall-verdict ok">✓ Correct!</span> ${fmt(current.card.a)}`
+    : `<span class="recall-verdict bad">✗ Not quite.</span> ${fmt(current.card.a)}`;
+  els.cardA.classList.remove("hidden");
+  els.checkAnswerBtn.classList.add("hidden");
+  els.gradeWrap.classList.remove("hidden");
+  Juice.sound(ok ? "good" : "again");
+  if (ok) Juice.confetti(40);
+}
+
+function renderParsons() {
+  const card = current.card;
+  const pool = current.pool
+    .map((i) => `<button class="parsons-chip" type="button" data-pool="${i}"><code>${escapeHtml(card.lines[i])}</code></button>`)
+    .join("");
+  const placed = current.order
+    .map((i, pos) => `<button class="parsons-chip placed" type="button" data-placed="${pos}"><code>${escapeHtml(card.lines[i])}</code></button>`)
+    .join("");
+  els.cardA.innerHTML = `
+    <div class="parsons-answer">${placed || '<span class="parsons-empty">Tap lines below in order…</span>'}</div>
+    <div class="parsons-pool">${pool}</div>
+    <div class="parsons-msg" id="parsons-msg"></div>`;
+  els.cardA.querySelectorAll("[data-pool]").forEach((b) =>
+    b.addEventListener("click", () => {
+      const i = +b.dataset.pool;
+      current.pool = current.pool.filter((x) => x !== i);
+      current.order.push(i);
+      renderParsons();
+    })
+  );
+  els.cardA.querySelectorAll("[data-placed]").forEach((b) =>
+    b.addEventListener("click", () => {
+      const pos = +b.dataset.placed;
+      current.pool.push(current.order.splice(pos, 1)[0]);
+      renderParsons();
+    })
+  );
+}
+
+function checkParsons() {
+  if (!current || current.revealed) return;
+  const card = current.card;
+  const msg = document.getElementById("parsons-msg");
+  if (current.order.length !== card.lines.length) {
+    if (msg) msg.textContent = "Place every line first.";
+    return;
+  }
+  if (current.order.every((v, i) => v === i)) {
+    current.revealed = true;
+    els.checkAnswerBtn.classList.add("hidden");
+    els.gradeWrap.classList.remove("hidden");
+    if (msg) msg.innerHTML = '<span class="recall-verdict ok">✓ Perfect order!</span>';
+    Juice.sound("good");
+    Juice.confetti(40);
+  } else {
+    if (msg)
+      msg.innerHTML =
+        '<span class="recall-verdict bad">✗ Not quite — rearrange, or</span> <button class="ghost sm" id="parsons-reveal" type="button">show answer</button>';
+    Juice.sound("again");
+    document.getElementById("parsons-reveal")?.addEventListener("click", () => {
+      current.revealed = true;
+      current.order = card.lines.map((_, i) => i);
+      current.pool = [];
+      renderParsons();
+      const m = document.getElementById("parsons-msg");
+      if (m) m.innerHTML = '<span class="recall-verdict bad">Here\'s the correct order.</span>';
+      els.checkAnswerBtn.classList.add("hidden");
+      els.gradeWrap.classList.remove("hidden");
+    });
+  }
+}
+
 function revealAnswer() {
   if (!current || current.revealed) return;
   current.revealed = true;
-  els.cardA.classList.remove("hidden");
-  els.reveal.classList.add("hidden");
-  els.gradeWrap.classList.remove("hidden");
+  Juice.sound("flip");
+  Juice.flip(els.card, () => {
+    els.cardA.classList.remove("hidden");
+    els.reveal.classList.add("hidden");
+    els.gradeWrap.classList.remove("hidden");
+  });
 }
 
 function grade(kind) {
   if (!current || !current.revealed || !session) return;
+  Juice.sound(kind === "again" ? "again" : "good");
 
   const { deck } = session;
   const card = session.queue.shift();
@@ -1547,6 +1743,8 @@ function renderDone(kind, deck) {
       (agains ? ` · ${agains} coming back later.` : ".");
     actions.appendChild(makeBtn("Back to decks", "primary", renderHome));
     session = null;
+    Juice.confetti();
+    Juice.sound("chest");
   } else {
     const capped = newCount(deck) > 0 && newAllowance() === 0;
     title.textContent = "All caught up.";
@@ -3707,7 +3905,11 @@ function completeLesson(lesson) {
     at: Date.now(),
   };
   saveStore();
-  if (passed && !previous?.done) addXp(50);
+  if (passed && !previous?.done) {
+    addGems(3, "lesson");
+    addXp(50);
+    Juice.confetti(80);
+  }
 
   const result = document.getElementById("lesson-result");
   result.classList.remove("hidden");
@@ -4600,6 +4802,23 @@ function renderRoadmapStage(track) {
   const build = stageBuild(stage);
   const trackKey = roadmapData(track.id).id ?? track.id;
 
+  // Boss battle: every solved exercise / lab / build chips the boss's HP.
+  const bossTotal = gate.exercises.length + labs.length + (build ? 1 : 0);
+  const bossSolvedCount = () => {
+    let n = 0;
+    gate.exercises.forEach((_, i) => {
+      if (exerciseSolved(stage, i, track.id)) n++;
+    });
+    labs.forEach((_, si) => {
+      if (codeSolved(stage, labKey(stage, si), track.id)) n++;
+    });
+    if (build && codeSolved(stage, buildKey(stage), track.id)) n++;
+    return n;
+  };
+  const bossHp = () => (bossTotal ? Math.max(0, Math.round(((bossTotal - bossSolvedCount()) / bossTotal) * 100)) : 0);
+  const hp0 = bossHp();
+  const defeated0 = passed || hp0 === 0;
+
   let exIndex = 0;
   const sections = stage.sections
     .map((section, si) => {
@@ -4669,6 +4888,14 @@ function renderRoadmapStage(track) {
     <div class="lesson-detail">
       <h2>${stage.icon || ""} ${escapeHtml(stage.title)}</h2>
       <p class="lesson-lede">${escapeHtml(stage.summary)}</p>
+      <div class="boss-bar ${defeated0 ? "defeated" : ""}" id="boss-bar" data-hp="${hp0}">
+        <span class="boss-icon">${defeated0 ? "🏆" : "👹"}</span>
+        <div class="boss-body">
+          <div class="boss-name">${defeated0 ? "Boss defeated — stage mastered!" : `Boss · ${escapeHtml(stage.title)}`}</div>
+          <div class="boss-hp"><span id="boss-hp-fill" style="width:${hp0}%"></span></div>
+        </div>
+        <span class="boss-hp-text" id="boss-hp-text">${defeated0 ? "Defeated" : `${hp0}% HP`}</span>
+      </div>
       <div class="lesson-body">${sections}</div>
       ${buildHtml}
       <h3 class="quiz-title">${passed ? "Stage test (retake)" : "Stage test"}</h3>
@@ -4690,6 +4917,29 @@ function renderRoadmapStage(track) {
     if (passed || live.ready) {
       const quiz = document.getElementById("road-test");
       if (quiz) quiz.classList.remove("hidden");
+    }
+    const bar = document.getElementById("boss-bar");
+    if (bar) {
+      const hp = bossHp();
+      const dead = passed || hp === 0;
+      const prev = Number(bar.dataset.hp ?? hp0);
+      const fill = document.getElementById("boss-hp-fill");
+      const txt = document.getElementById("boss-hp-text");
+      if (fill) fill.style.width = `${hp}%`;
+      if (txt) txt.textContent = dead ? "Defeated" : `${hp}% HP`;
+      bar.classList.toggle("defeated", dead);
+      if (hp < prev) {
+        bar.classList.remove("hit");
+        void bar.offsetWidth;
+        bar.classList.add("hit");
+        Juice.sound("hit");
+        const icon = bar.querySelector(".boss-icon");
+        if (icon) icon.textContent = dead ? "🏆" : "👹";
+        const name = bar.querySelector(".boss-name");
+        if (name && dead) name.textContent = "Boss defeated — stage mastered!";
+        if (dead) Juice.confetti(90);
+      }
+      bar.dataset.hp = String(hp);
     }
   };
 
@@ -5481,6 +5731,314 @@ function isTodayAt(ts) {
   return !!ts && new Date(ts).toDateString() === new Date().toDateString();
 }
 
+// ---------- Gems, quests, shop, onboarding, reminders ----------
+
+function gemToast(n, label) {
+  if (!els.xpToast) return;
+  els.xpToast.innerHTML = `<span>💎 +${n} gems${label ? ` · ${escapeHtml(label)}` : ""}</span>`;
+  els.xpToast.classList.remove("hidden", "show");
+  void els.xpToast.offsetWidth;
+  els.xpToast.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => els.xpToast.classList.remove("show"), 2600);
+}
+
+function addGems(n, label) {
+  if (!Number.isFinite(n) || n <= 0) return;
+  store.gems = (store.gems ?? 0) + n;
+  saveStore();
+  gemToast(n, label);
+}
+
+function tutorMsgCount() {
+  try {
+    return (loadTutorState().messages ?? []).filter((m) => m.role === "user").length;
+  } catch {
+    return 0;
+  }
+}
+
+function questCounts(src = store) {
+  const s = src || {};
+  const countDone = (obj) => Object.values(obj || {}).filter((r) => r?.done).length;
+  let clues = 0;
+  for (const c of Object.values(s.cases || {})) clues += Object.keys(c?.solved || {}).length;
+  let road = 0;
+  for (const r of Object.values(s.roadmaps || {})) road += Object.values(r?.exercises || {}).filter(Boolean).length;
+  return {
+    lessons: countDone(s.lessons),
+    labs: countDone(s.labs),
+    github: countDone(s.github),
+    clues,
+    road,
+    xp: s.xp || 0,
+  };
+}
+
+function questBaseline(src = store) {
+  return { ...questCounts(src), tutor: tutorMsgCount() };
+}
+
+function ensureQuests() {
+  if (!store.quests || store.quests.date !== todayKey() || !store.quests.baseline) {
+    store.quests = { date: todayKey(), baseline: questBaseline(), done: {}, claimed: false };
+    saveStore();
+  }
+  return store.quests;
+}
+
+function todaysQuests() {
+  const pool = window.QUEST_POOL ?? [];
+  if (!pool.length) return [];
+  const [y, m, d] = todayKey().split("-").map(Number);
+  let seed = Math.floor(Date.UTC(y, m - 1, d) / DAY) % 233280;
+  const rand = () => {
+    seed = (seed * 9301 + 49297) % 233280;
+    return seed / 233280;
+  };
+  const idx = pool.map((_, i) => i);
+  const picks = [];
+  for (let k = 0; k < 3 && idx.length; k++) picks.push(pool[idx.splice(Math.floor(rand() * idx.length), 1)[0]]);
+  return picks;
+}
+
+function questProgress(q) {
+  const base = store.quests?.baseline ?? {};
+  if (q.metric === "reviews") return store.stats?.reviewed ?? 0;
+  if (q.metric === "challenge") return store.challenge?.done && store.challenge.date === todayKey() ? 1 : 0;
+  if (q.metric === "tutor") return Math.max(0, tutorMsgCount() - (base.tutor ?? 0));
+  return Math.max(0, (questCounts()[q.metric] ?? 0) - (base[q.metric] ?? 0));
+}
+
+let questBusy = false;
+function checkQuests() {
+  if (questBusy) return;
+  questBusy = true;
+  try {
+    const q = ensureQuests();
+    for (const quest of todaysQuests()) {
+      if (!q.done[quest.id] && questProgress(quest) >= quest.target) {
+        q.done[quest.id] = true;
+        addGems(quest.gems, quest.label);
+        addXp(quest.xp);
+        Juice.sound("good");
+      }
+    }
+  } finally {
+    questBusy = false;
+  }
+}
+
+function renderQuestChest() {
+  const quests = todaysQuests();
+  if (!quests.length) return "";
+  const q = ensureQuests();
+  const rows = quests
+    .map((quest) => {
+      const prog = Math.min(quest.target, questProgress(quest));
+      const done = !!q.done[quest.id] || prog >= quest.target;
+      const pct = Math.round((prog / quest.target) * 100);
+      return `<div class="quest-row ${done ? "done" : ""}">
+        <span class="quest-icon">${quest.icon}</span>
+        <div class="quest-body">
+          <div class="quest-name">${escapeHtml(quest.label)} <span class="quest-reward">+${quest.xp} XP · 💎${quest.gems}</span></div>
+          <div class="quest-desc">${escapeHtml(quest.desc)} · ${prog}/${quest.target}</div>
+          <div class="quest-bar"><span style="width:${pct}%"></span></div>
+        </div>
+        <span class="quest-check">${done ? "✓" : ""}</span>
+      </div>`;
+    })
+    .join("");
+  const allDone = quests.every((quest) => q.done[quest.id] || questProgress(quest) >= quest.target);
+  const chest = q.claimed
+    ? `<div class="quest-chest claimed">🎁 Chest claimed — come back tomorrow!</div>`
+    : `<button class="quest-chest ${allDone ? "ready" : ""}" id="quest-claim" type="button" ${allDone ? "" : "disabled"}>
+        ${allDone ? "🎁 Open the chest! +40 XP · 💎10" : `🔒 Chest locked · ${quests.filter((x) => q.done[x.id] || questProgress(x) >= x.target).length}/3 quests`}
+      </button>`;
+  return `<div class="plan-card quest-card">
+    <div class="plan-top"><div><div class="plan-title">Daily quests</div><div class="plan-sub">Three small wins, one chest</div></div></div>
+    <div class="quest-list">${rows}</div>
+    ${chest}
+  </div>`;
+}
+
+function claimChest() {
+  const q = ensureQuests();
+  const quests = todaysQuests();
+  if (q.claimed || !quests.every((x) => q.done[x.id] || questProgress(x) >= x.target)) return;
+  q.claimed = true;
+  saveStore();
+  addGems(10, "quest chest");
+  addXp(40);
+  Juice.confetti();
+  Juice.sound("chest");
+  renderLearnPanel();
+}
+
+// ---------- XP shop ----------
+
+function shopItem(id) {
+  return (window.SHOP_ITEMS ?? []).find((i) => i.id === id);
+}
+
+function openShop() {
+  renderShop();
+  els.shopModal.classList.remove("hidden");
+}
+
+function renderShop() {
+  els.shopGems.textContent = String(store.gems ?? 0);
+  const groups = [
+    ["frame", "Avatar frames"],
+    ["title", "Titles"],
+    ["theme", "Themes"],
+  ];
+  els.shopGrid.innerHTML = groups
+    .map(([kind, label]) => {
+      const items = (window.SHOP_ITEMS ?? []).filter((i) => i.kind === kind);
+      const cards = items
+        .map((item) => {
+          const owned = (store.owned ?? []).includes(item.id);
+          const equipped =
+            (kind === "frame" && store.frame === item.id) ||
+            (kind === "title" && store.title === item.id) ||
+            (kind === "theme" && store.theme === item.id.replace("theme-", ""));
+          const btn = equipped
+            ? `<button class="ghost sm" disabled>Equipped</button>`
+            : owned
+              ? `<button class="primary sm" data-equip="${item.id}" type="button">Equip</button>`
+              : `<button class="primary sm" data-buy="${item.id}" type="button" ${(store.gems ?? 0) < item.price ? "disabled" : ""}>💎 ${item.price}</button>`;
+          return `<div class="shop-item ${equipped ? "equipped" : ""}">
+            <span class="shop-icon">${item.icon}</span>
+            <div class="shop-name">${escapeHtml(item.name)}</div>
+            <div class="shop-desc">${escapeHtml(item.desc)}</div>
+            ${btn}
+          </div>`;
+        })
+        .join("");
+      return `<div class="shop-group"><div class="shop-group-title">${label}</div><div class="shop-row">${cards}</div></div>`;
+    })
+    .join("");
+  els.shopGrid.querySelectorAll("[data-buy]").forEach((b) => b.addEventListener("click", () => buyItem(b.dataset.buy)));
+  els.shopGrid.querySelectorAll("[data-equip]").forEach((b) => b.addEventListener("click", () => equipItem(b.dataset.equip)));
+}
+
+function buyItem(id) {
+  const item = shopItem(id);
+  if (!item || (store.owned ?? []).includes(id) || (store.gems ?? 0) < item.price) return;
+  store.gems -= item.price;
+  store.owned = [...(store.owned ?? []), id];
+  saveStore();
+  Juice.sound("buy");
+  Juice.confetti(60);
+  equipItem(id);
+}
+
+function equipItem(id) {
+  const item = shopItem(id);
+  if (!item || !(store.owned ?? []).includes(id)) return;
+  if (item.kind === "frame") store.frame = id;
+  else if (item.kind === "title") store.title = id;
+  else if (item.kind === "theme") applyTheme(id.replace("theme-", ""));
+  saveStore();
+  updateStats();
+  renderShop();
+}
+
+// ---------- Onboarding ----------
+
+function maybeOnboard() {
+  if (store.onboarded || storeHasData() || profile.id) return;
+  els.onboardBody.innerHTML = `
+    <div class="onboard-hero">🐍</div>
+    <h2 class="onboard-title">Welcome to Learning Hub</h2>
+    <p class="onboard-sub">Learn Python by doing — flashcards, a code playground, and a detective game. Let's set you up in 20 seconds.</p>
+    <label class="modal-label" for="onboard-name">What should we call you?</label>
+    <input id="onboard-name" class="modal-input" maxlength="40" placeholder="Your name" autocomplete="off">
+    <label class="modal-label" for="onboard-goal">Your goal</label>
+    <select id="onboard-goal" class="modal-input">
+      <option value="basics">Learn Python basics</option>
+      <option value="job">Prep for a tech job</option>
+      <option value="fun">Just exploring</option>
+    </select>
+    <button class="primary onboard-go" id="onboard-start" type="button">Review my first 3 cards →</button>`;
+  els.onboardModal.classList.remove("hidden");
+  document.getElementById("onboard-start").addEventListener("click", () => {
+    const name = document.getElementById("onboard-name").value.trim();
+    store.goal = document.getElementById("onboard-goal").value;
+    store.onboarded = true;
+    saveStore();
+    els.onboardModal.classList.add("hidden");
+    if (name && !profile.id) submitProfileName(name);
+    startSession(window.DECKS[0]);
+  });
+}
+
+// ---------- Reminders & PWA ----------
+
+function checkReminder() {
+  const r = store.reminder;
+  if (!r?.enabled || r.lastFired === todayKey()) return;
+  const now = new Date();
+  const hhmm = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+  if (hhmm !== r.time || (store.stats?.reviewed ?? 0) > 0) return;
+  r.lastFired = todayKey();
+  saveStore();
+  try {
+    if (window.Notification && Notification.permission === "granted") {
+      new Notification("Learning Hub", { body: "Your cards are waiting — keep the streak alive 🔥", icon: "icon.svg" });
+    }
+  } catch {}
+}
+
+function openReminder() {
+  els.reminderTime.value = store.reminder?.time || "19:00";
+  els.reminderEnabled.checked = !!store.reminder?.enabled;
+  els.reminderStatus.textContent =
+    window.Notification && Notification.permission === "granted"
+      ? "Notifications are allowed."
+      : "You'll be asked to allow notifications when you enable this.";
+  els.reminderModal.classList.remove("hidden");
+}
+
+function saveReminder() {
+  const enabled = els.reminderEnabled.checked;
+  const time = els.reminderTime.value || "19:00";
+  const finish = () => {
+    store.reminder = { enabled, time, lastFired: store.reminder?.lastFired ?? null };
+    saveStore();
+    els.reminderModal.classList.add("hidden");
+  };
+  if (enabled && window.Notification && Notification.permission === "default") {
+    Notification.requestPermission().then(finish, finish);
+  } else {
+    finish();
+  }
+}
+
+let installPrompt = null;
+function initPwa() {
+  const local = location.hostname === "localhost" || location.hostname === "127.0.0.1";
+  if ("serviceWorker" in navigator && (location.protocol === "https:" || local)) {
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  }
+  window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault();
+    installPrompt = e;
+    if (els.btnInstall) els.btnInstall.classList.remove("hidden");
+  });
+  if (els.btnInstall) {
+    els.btnInstall.addEventListener("click", async () => {
+      if (!installPrompt) return;
+      installPrompt.prompt();
+      await installPrompt.userChoice;
+      installPrompt = null;
+      els.btnInstall.classList.add("hidden");
+    });
+  }
+  setInterval(checkReminder, 30000);
+}
+
 // ---------- Daily challenge ----------
 
 function challengeForToday() {
@@ -5589,7 +6147,10 @@ function completeChallenge(ch) {
   store.challengesDone = (store.challengesDone ?? 0) + 1;
   markPlanDone("challenge");
   saveStore();
+  addGems(5, "daily challenge");
   addXp(ch.xp ?? 40);
+  Juice.confetti();
+  Juice.sound("chest");
   const sub = document.querySelector(".challenge-card .plan-sub");
   if (sub) sub.textContent = "Completed today ✓ — nice work!";
   const chip = document.querySelector(".challenge-card .chip");
@@ -5628,6 +6189,7 @@ function renderPlanPanel() {
   const completed = items.filter(Boolean).length;
 
   els.learnPanel.innerHTML = `
+    ${renderQuestChest()}
     <div class="plan-card">
       <div class="plan-top">
         <div>
@@ -5720,6 +6282,9 @@ function renderPlanPanel() {
       }
     });
   });
+
+  const claimBtn = document.getElementById("quest-claim");
+  if (claimBtn) claimBtn.addEventListener("click", claimChest);
 }
 
 function renderReviewPanel() {
@@ -6570,6 +7135,25 @@ answer = match[0]`,
   },
 };
 
+// Season cases (data/cases-extra.js) — unlocked by level.
+Object.assign(ALL_CASES, window.EXTRA_CASES ?? {});
+
+function caseUnlocked(c) {
+  return !c.level || levelInfo().level >= c.level;
+}
+
+function refreshCaseOptions() {
+  if (!els.caseSelect) return;
+  els.caseSelect.innerHTML = Object.values(ALL_CASES)
+    .map((c, i) => {
+      const locked = !caseUnlocked(c);
+      const label = `Case ${i + 1} · ${c.title.replace("Case File: ", "")}${locked ? ` 🔒 Lv ${c.level}` : ""}`;
+      return `<option value="${c.id}" ${locked ? "disabled" : ""}>${escapeHtml(label)}</option>`;
+    })
+    .join("");
+  els.caseSelect.value = activeCaseId;
+}
+
 let activeCaseId = "lark";
 
 function getActiveCase() {
@@ -6618,6 +7202,8 @@ function caseSolvedCount() {
 
 function openGame() {
   show("game");
+  if (!caseUnlocked(getActiveCase())) activeCaseId = "lark";
+  refreshCaseOptions();
   const currentCase = getActiveCase();
   if (els.caseSelect) els.caseSelect.value = activeCaseId;
   if (els.caseTitle) els.caseTitle.textContent = currentCase.title;
@@ -6641,8 +7227,20 @@ function openGame() {
 function renderGame() {
   renderCaseTabs();
   renderCaseTable();
+  renderCaseEvidence();
   renderCaseClue();
   renderCaseProgress();
+}
+
+function renderCaseEvidence() {
+  if (!els.caseEvidence) return;
+  const currentCase = getActiveCase();
+  const solved = caseSolved();
+  const pinned = currentCase.clues.filter((c) => solved[c.id]);
+  els.caseEvidence.innerHTML = pinned.length
+    ? `<div class="evidence-head">📌 Evidence board</div>` +
+      pinned.map((c) => `<span class="evidence-pin">✓ ${escapeHtml(c.short)}</span>`).join("")
+    : "";
 }
 
 function renderCaseProgress() {
@@ -6678,7 +7276,7 @@ function renderCaseTabs() {
   const active = caseClueId === "final";
   html += `<button class="case-clue-tab case-clue-final ${active ? "active" : ""} ${isDone ? "done" : ""}" type="button" role="tab" aria-selected="${active}" data-clue="final" ${
     allSolved ? "" : 'disabled title="Solve all clues first"'
-  }><span class="case-clue-num">${isDone ? "&#10003;" : "5"}</span>Accuse</button>`;
+  }><span class="case-clue-num">${isDone ? "&#10003;" : currentCase.clues.length + 1}</span>Accuse</button>`;
 
   els.caseClueTabs.innerHTML = html;
 }
@@ -6716,7 +7314,7 @@ function renderCaseClue() {
   if (caseClueId === "final") {
     els.caseClue.innerHTML = `
       <div class="case-clue-head">
-        <span class="case-clue-num-badge">5</span>
+        <span class="case-clue-num-badge">${currentCase.clues.length + 1}</span>
         <div>
           <div class="case-clue-title">Name the culprit</div>
           <p class="case-clue-q">${escapeHtml(currentCase.desc)} Make the call.</p>
@@ -6954,8 +7552,11 @@ function accuseSuspect() {
       if (!store.case) store.case = { solved: {}, done: false };
       store.case.done = true;
     }
+    addGems(15, "case closed");
     addXp(100);
     saveStore();
+    Juice.confetti(180);
+    Juice.sound("level");
     renderGame();
     openMilestoneModal({
       title: "CASE CLOSED: " + currentCase.title,
@@ -7341,6 +7942,28 @@ if (els.themeToggle) els.themeToggle.addEventListener("click", cycleTheme);
 // Custom Decks & Import
 if (els.btnCreateDeck) els.btnCreateDeck.addEventListener("click", openCustomDeckModal);
 if (els.btnDailyChallenge) els.btnDailyChallenge.addEventListener("click", () => openLearn("challenge"));
+
+// Shop, sound, reminders, PWA install
+function syncSoundBtn() {
+  if (!els.btnSound) return;
+  const on = store.sound !== false;
+  els.btnSound.textContent = on ? "🔊 Sound" : "🔇 Muted";
+  els.btnSound.setAttribute("aria-pressed", String(on));
+}
+if (els.btnShop) els.btnShop.addEventListener("click", openShop);
+if (els.shopClose) els.shopClose.addEventListener("click", () => els.shopModal.classList.add("hidden"));
+if (els.btnSound) {
+  els.btnSound.addEventListener("click", () => {
+    store.sound = store.sound === false;
+    saveStore();
+    syncSoundBtn();
+    Juice.sound("flip");
+  });
+}
+if (els.btnReminder) els.btnReminder.addEventListener("click", openReminder);
+if (els.reminderClose) els.reminderClose.addEventListener("click", () => els.reminderModal.classList.add("hidden"));
+if (els.reminderCancel) els.reminderCancel.addEventListener("click", () => els.reminderModal.classList.add("hidden"));
+if (els.reminderSave) els.reminderSave.addEventListener("click", saveReminder);
 if (els.customDeckClose) els.customDeckClose.addEventListener("click", () => els.customDeckModal.classList.add("hidden"));
 if (els.customDeckCancel) els.customDeckCancel.addEventListener("click", () => els.customDeckModal.classList.add("hidden"));
 if (els.customDeckSave) els.customDeckSave.addEventListener("click", saveCustomDeck);
@@ -7409,6 +8032,11 @@ if (els.milestoneCopy) {
 // Case switching & tabs
 if (els.caseSelect) {
   els.caseSelect.addEventListener("change", () => {
+    const chosen = ALL_CASES[els.caseSelect.value];
+    if (chosen && !caseUnlocked(chosen)) {
+      els.caseSelect.value = activeCaseId;
+      return;
+    }
     activeCaseId = els.caseSelect.value;
     openGame();
   });
@@ -7471,6 +8099,10 @@ els.caseSuspect.addEventListener("keydown", (e) => {
 });
 
 els.reveal.addEventListener("click", revealAnswer);
+els.checkAnswerBtn.addEventListener("click", () => {
+  if (current?.type === "parsons") checkParsons();
+  else checkTypedAnswer();
+});
 els.btnAgain.addEventListener("click", () => grade("again"));
 els.btnGood.addEventListener("click", () => grade("good"));
 
@@ -7560,13 +8192,17 @@ document.addEventListener("keydown", (e) => {
       (els.profilePanel && !els.profilePanel.classList.contains("hidden")) ||
       (els.customDeckModal && !els.customDeckModal.classList.contains("hidden")) ||
       (els.importDeckModal && !els.importDeckModal.classList.contains("hidden")) ||
-      (els.milestoneModal && !els.milestoneModal.classList.contains("hidden")))
+      (els.milestoneModal && !els.milestoneModal.classList.contains("hidden")) ||
+      (els.shopModal && !els.shopModal.classList.contains("hidden")) ||
+      (els.reminderModal && !els.reminderModal.classList.contains("hidden")))
   ) {
     if (els.levelPanel) closeLevelPanel();
     if (els.profilePanel) closeProfilePanel();
     if (els.customDeckModal) els.customDeckModal.classList.add("hidden");
     if (els.importDeckModal) els.importDeckModal.classList.add("hidden");
     if (els.milestoneModal) els.milestoneModal.classList.add("hidden");
+    if (els.shopModal) els.shopModal.classList.add("hidden");
+    if (els.reminderModal) els.reminderModal.classList.add("hidden");
     return;
   }
   if (document.body.dataset.view === "code" && e.ctrlKey && e.key === "Enter") {
@@ -7583,10 +8219,15 @@ document.addEventListener("keydown", (e) => {
   }
   if (document.body.dataset.view !== "study") return;
 
+  // Typed-answer cards handle Enter inside their own input.
+  if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+
   if (e.key === " " || e.key === "Enter") {
     if (!current || current.revealed) return;
     e.preventDefault();
-    revealAnswer();
+    if (current.type === "parsons") checkParsons();
+    else if (current.type === "recall" || current.type === "predict") document.getElementById("recall-input")?.focus();
+    else revealAnswer();
   } else if (current?.revealed && (e.key === "1" || e.key === "2")) {
     e.preventDefault();
     grade(e.key === "1" ? "again" : "good");
@@ -7595,5 +8236,7 @@ document.addEventListener("keydown", (e) => {
 
 settleStreak();
 applyTheme(store.theme || "dark");
+syncSoundBtn();
 renderHome();
-initProfiles();
+initPwa();
+initProfiles().then(() => maybeOnboard());

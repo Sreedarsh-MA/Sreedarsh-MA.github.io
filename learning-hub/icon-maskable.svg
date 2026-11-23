@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#0b0f17"/>
+  <rect x="140" y="160" width="232" height="158" rx="22" fill="#1d2a44"/>
+  <rect x="140" y="160" width="232" height="158" rx="22" fill="none" stroke="#6ea1ff" stroke-width="10"/>
+  <text x="256" y="276" font-family="Segoe UI, Arial, sans-serif" font-size="104" font-weight="700" fill="#6ea1ff" text-anchor="middle">L</text>
+  <circle cx="344" cy="316" r="48" fill="#7ee0a3"/>
+  <path d="M322 316 l16 16 l32 -34" fill="none" stroke="#0b0f17" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

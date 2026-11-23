@@ -3517,3 +3517,167 @@ button.secondary:hover { border-color: rgba(110, 161, 255, 0.5); }
   white-space: pre-wrap;
 }
 
+
+/* ===== Unlockable themes ===== */
+html[data-theme="midnight"] {
+  --bg: #0d0a1a;
+  --surface: #171230;
+  --surface-2: #1f1840;
+  --border: #322a55;
+  --text: #ece8fb;
+  --muted: #9d94c4;
+  --accent: #a78bfa;
+  --accent-ink: #140b26;
+  --good: #34d399;
+  --code-bg: rgba(0, 0, 0, 0.4);
+}
+html[data-theme="forest"] {
+  --bg: #0a1410;
+  --surface: #12211a;
+  --surface-2: #182b21;
+  --border: #274033;
+  --text: #e6f2ea;
+  --muted: #8fb0a0;
+  --accent: #4ade80;
+  --accent-ink: #06130c;
+  --good: #a3e635;
+  --code-bg: rgba(0, 0, 0, 0.35);
+}
+
+/* ===== Card flip ===== */
+@keyframes cardflip {
+  0% { transform: rotateY(0deg); }
+  50% { transform: rotateY(90deg); }
+  100% { transform: rotateY(0deg); }
+}
+.card.flipping { animation: cardflip 0.42s ease; }
+
+/* ===== Recall / predict / parsons ===== */
+.recall-input {
+  display: block;
+  width: 100%;
+  margin-top: 14px;
+  padding: 12px 14px;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  font-family: "Cascadia Code", Consolas, ui-monospace, monospace;
+  font-size: 15px;
+}
+.recall-input:focus { outline: none; border-color: var(--accent); }
+.recall-verdict { font-weight: 700; margin-right: 6px; }
+.recall-verdict.ok { color: var(--good); }
+.recall-verdict.bad { color: #ef767a; }
+.parsons-answer {
+  display: flex; flex-direction: column; gap: 6px;
+  min-height: 48px; padding: 10px; margin-bottom: 10px;
+  border: 1px dashed var(--border); border-radius: 10px;
+}
+.parsons-empty { color: var(--muted); font-size: 13px; }
+.parsons-pool { display: flex; flex-wrap: wrap; gap: 6px; }
+.parsons-chip {
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 6px 10px; cursor: pointer; color: var(--text);
+  text-align: left;
+}
+.parsons-chip code { font-family: "Cascadia Code", Consolas, ui-monospace, monospace; font-size: 13px; white-space: pre; }
+.parsons-chip:hover { border-color: var(--accent); }
+.parsons-chip.placed { border-color: var(--accent); background: var(--code-bg); }
+.parsons-msg { margin-top: 8px; font-size: 13px; }
+
+/* ===== Daily quests ===== */
+.quest-card { margin-bottom: 14px; }
+.quest-list { display: grid; gap: 10px; margin-top: 12px; }
+.quest-row { display: flex; gap: 10px; align-items: flex-start; }
+.quest-row.done .quest-name { color: var(--muted); }
+.quest-icon { font-size: 20px; line-height: 1.2; }
+.quest-body { flex: 1; min-width: 0; }
+.quest-name { font-weight: 600; font-size: 14px; }
+.quest-reward { color: var(--muted); font-weight: 400; font-size: 12px; margin-left: 6px; }
+.quest-desc { color: var(--muted); font-size: 12.5px; margin: 2px 0 5px; }
+.quest-bar { height: 6px; background: var(--surface-2); border-radius: 4px; overflow: hidden; }
+.quest-bar span { display: block; height: 100%; background: var(--accent); border-radius: 4px; transition: width 0.4s ease; }
+.quest-row.done .quest-bar span { background: var(--good); }
+.quest-check { color: var(--good); font-weight: 700; width: 18px; }
+.quest-chest {
+  margin-top: 14px; width: 100%; padding: 12px; border-radius: 12px;
+  border: 1px solid var(--border); background: var(--surface-2);
+  color: var(--muted); font-weight: 600; cursor: not-allowed;
+}
+.quest-chest.ready {
+  cursor: pointer; color: var(--accent-ink); background: var(--accent);
+  border-color: var(--accent); animation: chestpulse 1.4s ease infinite;
+}
+.quest-chest.claimed { color: var(--good); cursor: default; }
+@keyframes chestpulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.02); } }
+
+/* ===== XP shop ===== */
+.shop-card { max-width: 680px; }
+.shop-gems { padding: 0 20px 12px; color: var(--muted); font-size: 13px; }
+.shop-grid { padding: 0 20px 20px; display: grid; gap: 18px; max-height: 60vh; overflow: auto; }
+.shop-group-title { font-weight: 700; font-size: 13px; color: var(--muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.04em; }
+.shop-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.shop-item {
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px;
+  padding: 12px; display: flex; flex-direction: column; gap: 5px; align-items: flex-start;
+}
+.shop-item.equipped { border-color: var(--accent); }
+.shop-icon { font-size: 22px; }
+.shop-name { font-weight: 600; font-size: 14px; }
+.shop-desc { color: var(--muted); font-size: 12px; flex: 1; }
+
+/* ===== Avatar frames ===== */
+.profile-avatar.frame-azure { box-shadow: 0 0 0 3px rgba(110, 161, 255, 0.7); }
+.profile-avatar.frame-gold { box-shadow: 0 0 0 3px rgba(255, 209, 102, 0.8); }
+.profile-avatar.frame-ember { box-shadow: 0 0 0 3px rgba(239, 118, 122, 0.8); }
+.profile-avatar.frame-prism { box-shadow: 0 0 0 3px rgba(199, 146, 234, 0.8); animation: prism 3s linear infinite; }
+@keyframes prism {
+  0% { box-shadow: 0 0 0 3px rgba(239, 118, 122, 0.8); }
+  33% { box-shadow: 0 0 0 3px rgba(126, 224, 163, 0.8); }
+  66% { box-shadow: 0 0 0 3px rgba(110, 161, 255, 0.8); }
+  100% { box-shadow: 0 0 0 3px rgba(239, 118, 122, 0.8); }
+}
+
+/* ===== Onboarding ===== */
+.onboard-card { max-width: 440px; text-align: center; padding: 28px; }
+.onboard-hero { font-size: 48px; }
+.onboard-title { margin: 8px 0 6px; }
+.onboard-sub { color: var(--muted); font-size: 14px; margin-bottom: 16px; }
+.onboard-card .modal-label { text-align: left; }
+.onboard-card .modal-input { text-align: left; }
+.onboard-go { width: 100%; margin-top: 16px; }
+
+/* ===== Reminder ===== */
+.reminder-enable { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 14px; }
+
+/* ===== Boss battle ===== */
+.boss-bar {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: 12px; padding: 12px 14px; margin: 14px 0;
+}
+.boss-icon { font-size: 26px; }
+.boss-body { flex: 1; min-width: 0; }
+.boss-name { font-weight: 700; font-size: 13.5px; margin-bottom: 6px; }
+.boss-hp { height: 10px; background: var(--code-bg); border-radius: 6px; overflow: hidden; }
+.boss-hp span { display: block; height: 100%; background: linear-gradient(90deg, #ef767a, #ffd166); border-radius: 6px; transition: width 0.5s ease; }
+.boss-hp-text { font-size: 12px; color: var(--muted); font-weight: 600; white-space: nowrap; }
+.boss-bar.defeated { border-color: var(--good); }
+.boss-bar.defeated .boss-hp span { background: var(--good); }
+.boss-bar.hit { animation: bosshit 0.35s ease; }
+@keyframes bosshit { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+
+/* ===== Evidence board ===== */
+.case-evidence { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 10px 0; }
+.case-evidence:empty { display: none; }
+.evidence-head { font-size: 12px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+.evidence-pin {
+  background: var(--surface-2); border: 1px solid var(--good); color: var(--good);
+  border-radius: 20px; padding: 4px 12px; font-size: 12.5px; font-weight: 600;
+}
+
+/* ===== Reduced motion ===== */
+@media (prefers-reduced-motion: reduce) {
+  .card.flipping, .boss-bar.hit, .quest-chest.ready, .profile-avatar.frame-prism { animation: none; }
+}
