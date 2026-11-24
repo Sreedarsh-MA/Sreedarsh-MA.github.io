@@ -2697,17 +2697,42 @@ function chatSystemPrompt() {
   return name + CHAT_SYSTEM_PROMPT + memoryContext();
 }
 
-const PROVIDERS = ["gemini", "ollama", "openrouter", "nvidia"];
+const PROVIDERS = ["gemini", "groq", "ollama", "openrouter", "nvidia"];
+
+const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
+
+// Curated from the models this Groq key actually has access to (Nov 2026).
+const GROQ_MODELS = [
+  { name: "openai/gpt-oss-120b", label: "GPT-OSS 120B · strongest (Jarvis default)" },
+  { name: "openai/gpt-oss-20b", label: "GPT-OSS 20B · quick" },
+  { name: "qwen/qwen3.8-27b", label: "Qwen 3.8 27B · multilingual" },
+  { name: "allam-2-7b", label: "Allam 2 7B · Arabic" },
+];
 
 const GEMINI_MODELS = [
-  { name: "gemini-2.5-flash", label: "Gemini 2.5 Flash · fast & smart (free tier)" },
-  { name: "gemini-2.0-flash", label: "Gemini 2.0 Flash" },
-  { name: "gemini-1.5-flash", label: "Gemini 1.5 Flash" },
+  { name: "gemini-3.5-flash", label: "Gemini 3.5 Flash · Jarvis default" },
+  { name: "gemini-3.5-flash-lite", label: "Gemini 3.5 Flash Lite · most reliable" },
+  { name: "gemini-3.8-flash", label: "Gemini 3.8 Flash" },
+  { name: "gemini-3.1-pro-preview", label: "Gemini 3.1 Pro · preview" },
+  { name: "gemini-3.1-flash-lite", label: "Gemini 3.1 Flash Lite" },
 ];
+
+const DEFAULT_GEMINI_MODEL = "gemini-3.5-flash";
+const DEFAULT_GROQ_MODEL = "openai/gpt-oss-120b";
 
 function emptyChatState() {
   const isLocal = typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
-  return { provider: isLocal ? "ollama" : "gemini", model: "", orModel: "", nimModel: "", geminiModel: "gemini-2.5-flash", apiKey: "", messages: [] };
+  return {
+    provider: isLocal ? "ollama" : "gemini",
+    model: "",
+    orModel: "",
+    nimModel: "",
+    geminiModel: DEFAULT_GEMINI_MODEL,
+    groqModel: DEFAULT_GROQ_MODEL,
+    keys: { gemini: "", groq: "", openrouter: "" },
+    apiKey: "",
+    messages: [],
+  };
 }
 
 function loadChatState() {
@@ -2716,13 +2741,23 @@ function loadChatState() {
     if (!raw) return emptyChatState();
     const saved = JSON.parse(raw);
     const isLocal = typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+    const provider = PROVIDERS.includes(saved.provider) ? saved.provider : isLocal ? "ollama" : "gemini";
+    const keys = {
+      gemini: typeof saved.keys?.gemini === "string" ? saved.keys.gemini : "",
+      groq: typeof saved.keys?.groq === "string" ? saved.keys.groq : "",
+      openrouter: typeof saved.keys?.openrouter === "string" ? saved.keys.openrouter : "",
+    };
+    // Migrate the old single-key format to the active provider's slot.
+    if (saved.apiKey && !keys[provider]) keys[provider] = saved.apiKey;
     return {
-      provider: PROVIDERS.includes(saved.provider) ? saved.provider : (isLocal ? "ollama" : "gemini"),
+      provider,
       model: typeof saved.model === "string" ? saved.model : "",
       orModel: typeof saved.orModel === "string" ? saved.orModel : "",
       nimModel: typeof saved.nimModel === "string" ? saved.nimModel : "",
-      geminiModel: typeof saved.geminiModel === "string" ? saved.geminiModel : "gemini-2.5-flash",
-      apiKey: typeof saved.apiKey === "string" ? saved.apiKey : "",
+      geminiModel: typeof saved.geminiModel === "string" ? saved.geminiModel : DEFAULT_GEMINI_MODEL,
+      groqModel: typeof saved.groqModel === "string" ? saved.groqModel : DEFAULT_GROQ_MODEL,
+      keys,
+      apiKey: keys[provider] ?? "",
       messages: Array.isArray(saved.messages)
         ? saved.messages
             .filter((m) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
@@ -2754,7 +2789,9 @@ function saveChatState() {
         orModel: chatState.orModel,
         nimModel: chatState.nimModel,
         geminiModel: chatState.geminiModel,
-        apiKey: chatState.apiKey,
+        groqModel: chatState.groqModel,
+        keys: chatState.keys,
+        apiKey: chatState.keys?.[chatState.provider] || chatState.apiKey || "",
         messages: chatState.messages.slice(-80),
       })
     );
@@ -2775,19 +2812,29 @@ function isNim() {
   return chatState.provider === "nvidia";
 }
 
+function isGroq() {
+  return chatState.provider === "groq";
+}
+
+function isOllama() {
+  return chatState.provider === "ollama";
+}
+
 function isRemote() {
   return chatState.provider !== "ollama";
 }
 
 function activeModels() {
   if (isGemini()) return GEMINI_MODELS;
+  if (isGroq()) return GROQ_MODELS;
   if (isOpenRouter()) return orModels;
   if (isNim()) return nimModels;
   return ollamaModels;
 }
 
 function activeModel() {
-  if (isGemini()) return chatState.geminiModel || "gemini-2.5-flash";
+  if (isGemini()) return chatState.geminiModel || DEFAULT_GEMINI_MODEL;
+  if (isGroq()) return chatState.groqModel || DEFAULT_GROQ_MODEL;
   if (isOpenRouter()) return chatState.orModel;
   if (isNim()) return chatState.nimModel;
   return chatState.model;
@@ -2795,6 +2842,7 @@ function activeModel() {
 
 function setActiveModel(name) {
   if (isGemini()) chatState.geminiModel = name;
+  else if (isGroq()) chatState.groqModel = name;
   else if (isOpenRouter()) chatState.orModel = name;
   else if (isNim()) chatState.nimModel = name;
   else chatState.model = name;
@@ -2810,7 +2858,7 @@ function openChat() {
   if (!isLocal && chatState.provider === "ollama") {
     if (els.chatWebNotice) {
       els.chatWebNotice.classList.remove("hidden");
-      els.chatWebNotice.innerHTML = "💡 <strong>Visiting on the web?</strong> Ollama only runs locally on your PC. Switch to <strong>Google Gemini</strong> (with a free API key) or <strong>OpenRouter</strong> to chat with your coach online!";
+      els.chatWebNotice.innerHTML = "💡 <strong>Visiting on the web?</strong> Ollama only runs locally on your PC. Switch to <strong>Groq</strong> or <strong>Google Gemini</strong> (free API keys) to chat with your coach online!";
     }
   } else if (els.chatWebNotice) {
     els.chatWebNotice.classList.add("hidden");
@@ -2820,7 +2868,7 @@ function openChat() {
     if (!orModels.length) loadOpenRouterModels();
   } else if (isNim()) {
     if (!nimModels.length) loadNimModels();
-  } else if (!isGemini() && !ollamaModels.length) {
+  } else if (isOllama() && !ollamaModels.length) {
     loadOllamaModels();
   }
   if (memoryOpen()) renderMemory();
@@ -2859,19 +2907,27 @@ function initChat() {
 
   els.chatProvider.addEventListener("change", () => {
     chatState.provider = PROVIDERS.includes(els.chatProvider.value) ? els.chatProvider.value : "ollama";
+    chatState.apiKey = chatState.keys?.[chatState.provider] ?? "";
     saveChatState();
     applyProviderUi();
-    if (isOpenRouter()) {
+    if (isGroq()) {
+      populateModelSelect();
+    } else if (isOpenRouter()) {
       if (!orModels.length) loadOpenRouterModels();
     } else if (isNim()) {
       if (!nimModels.length) loadNimModels();
-    } else if (!ollamaModels.length) {
+    } else if (isGemini()) {
+      populateModelSelect();
+    } else if (isOllama() && !ollamaModels.length) {
       loadOllamaModels();
     }
   });
 
   els.chatKey.addEventListener("input", () => {
-    chatState.apiKey = els.chatKey.value.trim();
+    const value = els.chatKey.value.trim();
+    chatState.apiKey = value;
+    if (!chatState.keys) chatState.keys = { gemini: "", groq: "", openrouter: "" };
+    chatState.keys[chatState.provider] = value;
     saveChatState();
   });
 
@@ -2897,14 +2953,19 @@ function initChat() {
 
 function applyProviderUi() {
   els.chatProvider.value = chatState.provider;
-  const needsKey = isOpenRouter() || isGemini();
+  const needsKey = isOpenRouter() || isGemini() || isGroq();
   els.chatKey.classList.toggle("hidden", !needsKey);
-  els.chatKey.value = chatState.apiKey;
+  els.chatKey.value = chatState.keys?.[chatState.provider] ?? chatState.apiKey ?? "";
 
   if (isGemini()) {
-    els.chatKey.placeholder = "Google Gemini API key (AIzaSy...)";
+    els.chatKey.placeholder = "Google Gemini API key (AIza… or AQ.…)";
     els.chatHint.innerHTML =
       "Uses Google Gemini directly from your browser. Get a free API key at <a href='https://aistudio.google.com/app/apikey' target='_blank' rel='noreferrer'>Google AI Studio</a>. Enter to send, Shift+Enter for a new line.";
+    els.chatInput.placeholder = "Ask or paste code…";
+  } else if (isGroq()) {
+    els.chatKey.placeholder = "Groq API key (gsk_…)";
+    els.chatHint.innerHTML =
+      "Uses Groq's free tier — very fast GPT-OSS and Qwen models. Get a key at <a href='https://console.groq.com/keys' target='_blank' rel='noreferrer'>console.groq.com</a>. Your key is saved in this browser only. Enter to send, Shift+Enter for a new line.";
     els.chatInput.placeholder = "Ask or paste code…";
   } else if (isOpenRouter()) {
     els.chatKey.placeholder = "OpenRouter API key (sk-or-v1-…)";
@@ -2925,7 +2986,7 @@ function applyProviderUi() {
   if (!isLocal && chatState.provider === "ollama") {
     if (els.chatWebNotice) {
       els.chatWebNotice.classList.remove("hidden");
-      els.chatWebNotice.innerHTML = "💡 <strong>Visiting on the web?</strong> Ollama only runs locally on your PC. Switch to <strong>Google Gemini</strong> (with a free API key) or <strong>OpenRouter</strong> to chat with your coach online!";
+      els.chatWebNotice.innerHTML = "💡 <strong>Visiting on the web?</strong> Ollama only runs locally on your PC. Switch to <strong>Groq</strong> or <strong>Google Gemini</strong> (free API keys) to chat with your coach online!";
     }
   } else if (els.chatWebNotice) {
     els.chatWebNotice.classList.add("hidden");
@@ -3165,6 +3226,7 @@ const NIM_RECOMMENDED = [
 ];
 
 const PREFERRED_MODELS = {
+  groq: ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.8-27b"],
   openrouter: ["google/gemma-4-26b-a4b-it:free", "nvidia/nemotron-3.5-lightning:free"],
   nvidia: NIM_RECOMMENDED,
   ollama: ["llama3.2:latest", "qwen3.5:2b", "granite4.1:3b"],
@@ -3257,7 +3319,9 @@ async function sendChat() {
   if (!model) {
     chatError(
       isGemini()
-        ? "No Google Gemini model selected. Choose gemini-2.5-flash above."
+        ? "No Google Gemini model selected. Choose one above."
+        : isGroq()
+        ? "No Groq model selected. Pick one above."
         : isOpenRouter()
         ? "No free OpenRouter model selected yet. Wait for the list to load, or check your internet connection."
         : isNim()
@@ -3267,7 +3331,12 @@ async function sendChat() {
     return;
   }
   if (isGemini() && !chatState.apiKey) {
-    chatError("Add your Google Gemini API key above (starts with AIzaSy...) to chat. Get one free at aistudio.google.com.");
+    chatError("Add your Google Gemini API key above to chat. Get one free at aistudio.google.com.");
+    els.chatKey.focus();
+    return;
+  }
+  if (isGroq() && !chatState.apiKey) {
+    chatError("Add your Groq API key above (it starts with gsk_) to chat. Get one free at console.groq.com/keys.");
     els.chatKey.focus();
     return;
   }
@@ -3439,6 +3508,18 @@ function streamCurrent(messages, signal, onToken, systemPrompt = chatSystemPromp
       temperature,
     });
   }
+  if (isGroq()) {
+    return streamOpenAICompatible({
+      url: GROQ_URL,
+      apiKey: chatState.apiKey,
+      provider: "groq",
+      model,
+      messages: [{ role: "system", content: systemPrompt }, ...messages],
+      signal,
+      onToken,
+      temperature,
+    });
+  }
   if (isNim()) {
     return streamOpenAICompatible({
       url: `${NIM_PROXY}/chat/completions`,
@@ -3528,7 +3609,8 @@ async function streamOpenAICompatible({ url, apiKey, provider, model, messages, 
   });
 
   if (!res.ok) {
-    let message = `${provider === "nvidia" ? "NVIDIA NIM" : "OpenRouter"} returned HTTP ${res.status}`;
+    const label = provider === "nvidia" ? "NVIDIA NIM" : provider === "groq" ? "Groq" : "OpenRouter";
+    let message = `${label} returned HTTP ${res.status}`;
     try {
       const data = await res.json();
       if (data?.error?.message) message = data.error.message;
@@ -3539,6 +3621,12 @@ async function streamOpenAICompatible({ url, apiKey, provider, model, messages, 
       if (res.status === 401) message = "OpenRouter rejected the API key. Check the key above — it should start with sk-or-v1-.";
       else if (res.status === 402) message = "That OpenRouter model needs credits. Pick a free model from the list.";
       else if (res.status === 429) message = "OpenRouter's free tier is rate limited right now. Wait a minute and try again.";
+    } else if (provider === "groq") {
+      if (res.status === 401 || res.status === 403)
+        message = "Groq rejected the API key. Check the key above — it should start with gsk_.";
+      else if (res.status === 404 || res.status === 410)
+        message = `Groq has retired "${model}". Pick another model from the list.`;
+      else if (res.status === 429) message = "Groq is rate limiting this key. Wait a few seconds and try again.";
     } else if (provider === "nvidia") {
       if (res.status === 401 || res.status === 403)
         message = "NVIDIA NIM rejected the key from JARVIS's .env. Update NVIDIA_API_KEY, then restart serve.py.";
@@ -3589,10 +3677,41 @@ async function streamOpenAICompatible({ url, apiKey, provider, model, messages, 
   return { tokens };
 }
 
+/* ---------- Local-only AI config (config.local.json — never published) ---------- */
+
+let localAiConfigLoaded = false;
+async function initLocalAiConfig() {
+  if (localAiConfigLoaded) return;
+  localAiConfigLoaded = true;
+  // The public GitHub Pages build has no key file; skip the request entirely.
+  if (/\.github\.io$/i.test(location.hostname)) return;
+  try {
+    const res = await fetch("config.local.json", { cache: "no-store" });
+    if (!res.ok) return;
+    const cfg = await res.json();
+    const hadSaved = !!localStorage.getItem(CHAT_KEY);
+    if (!chatState.keys) chatState.keys = { gemini: "", groq: "", openrouter: "" };
+    for (const p of ["gemini", "groq", "openrouter"]) {
+      const key = cfg?.keys?.[p];
+      if (typeof key === "string" && key.trim() && !chatState.keys[p]) chatState.keys[p] = key.trim();
+    }
+    if (!hadSaved) {
+      if (PROVIDERS.includes(cfg.provider)) chatState.provider = cfg.provider;
+      if (typeof cfg.models?.gemini === "string") chatState.geminiModel = cfg.models.gemini;
+      if (typeof cfg.models?.groq === "string") chatState.groqModel = cfg.models.groq;
+    }
+    chatState.apiKey = chatState.keys[chatState.provider] ?? "";
+    saveChatState();
+    if (chatBound) applyProviderUi();
+  } catch {
+    // No local config — keys are entered in the UI and kept in this browser.
+  }
+}
+
 /* ---------- Learn: lessons · tutor · plan ---------- */
 
 const LEARN_MODES = ["lessons", "courses", "github", "tracks", "labs", "tutor", "plan", "review", "challenge"];
-const PROVIDER_LABELS = { gemini: "Google Gemini", ollama: "Ollama", openrouter: "OpenRouter", nvidia: "NVIDIA NIM" };
+const PROVIDER_LABELS = { gemini: "Google Gemini", groq: "Groq", ollama: "Ollama", openrouter: "OpenRouter", nvidia: "NVIDIA NIM" };
 const TUTOR_KEY = "pycards.tutor.v1";
 
 function loadTutorState() {
@@ -6660,6 +6779,11 @@ async function ensureTutorModel() {
       tutorNotice("Add your Google Gemini API key in Chat first, then come back.");
       return false;
     }
+  } else if (isGroq()) {
+    if (!chatState.apiKey) {
+      tutorNotice("Add your Groq API key in Chat first, then come back.");
+      return false;
+    }
   } else if (isOpenRouter()) {
     if (!orModels.length) await loadOpenRouterModels();
     if (!chatState.apiKey) {
@@ -6676,11 +6800,13 @@ async function ensureTutorModel() {
     tutorNotice(
       isNim()
         ? "NIM proxy not running — start the app with `python serve.py`."
-        : isOpenRouter()
-          ? "No OpenRouter model selected. Open Chat and pick one."
-          : isGemini()
-            ? "No Gemini model selected. Open Chat and pick one."
-            : "No Ollama model found. Start Ollama (`ollama serve`), then try again."
+        : isGroq()
+          ? "No Groq model selected. Open Chat and pick one."
+          : isOpenRouter()
+            ? "No OpenRouter model selected. Open Chat and pick one."
+            : isGemini()
+              ? "No Gemini model selected. Open Chat and pick one."
+              : "No Ollama model found. Start Ollama (`ollama serve`), then try again."
     );
     return false;
   }
@@ -7653,7 +7779,7 @@ const AI_CARD_SYSTEM_PROMPT = [
 ].join("\n");
 
 function aiGenNeedsKey() {
-  return (isGemini() || isOpenRouter()) && !chatState.apiKey;
+  return (isGemini() || isGroq() || isOpenRouter()) && !chatState.apiKey;
 }
 
 function setAiGenMsg(text, kind = "") {
@@ -7759,10 +7885,13 @@ async function generateAiCards() {
     if (!typed) {
       els.aiGenKeyRow?.classList.remove("hidden");
       els.aiGenKey?.focus();
-      setAiGenMsg(`Add your ${isGemini() ? "Gemini" : "OpenRouter"} API key to generate cards.`, "warn");
+      const label = isGemini() ? "Gemini" : isGroq() ? "Groq" : "OpenRouter";
+      setAiGenMsg(`Add your ${label} API key to generate cards.`, "warn");
       return;
     }
     chatState.apiKey = typed;
+    if (!chatState.keys) chatState.keys = { gemini: "", groq: "", openrouter: "" };
+    chatState.keys[chatState.provider] = typed;
     saveChatState();
     els.aiGenKeyRow?.classList.add("hidden");
   }
@@ -8492,6 +8621,7 @@ document.addEventListener("keydown", (e) => {
 settleStreak();
 applyTheme(store.theme || "dark");
 syncSoundBtn();
+initLocalAiConfig();
 renderHome();
 initPwa();
 initProfiles().then(() => maybeOnboard());

@@ -1,5 +1,5 @@
 ﻿// Learning Hub service worker â€” offline app shell + runtime CDN cache.
-const VERSION = "learnhub-v2";
+const VERSION = "learnhub-v3";
 const SCOPE = self.registration.scope;
 
 const SHELL = [
