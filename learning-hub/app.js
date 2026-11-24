@@ -109,6 +109,7 @@ const els = {
   chatModel: document.getElementById("chat-model"),
   chatProvider: document.getElementById("chat-provider"),
   chatKey: document.getElementById("chat-key"),
+  chatBackend: document.getElementById("chat-backend"),
   chatHint: document.getElementById("chat-hint"),
   chatWebNotice: document.getElementById("chat-web-notice"),
   themeToggle: document.getElementById("theme-toggle"),
@@ -466,6 +467,7 @@ function emptyStore() {
     roadmaps: {},
     theme: "dark",
     sound: true,
+    backendUrl: "",
     gems: 0,
     owned: ["frame-bronze", "title-newcomer"],
     frame: "frame-bronze",
@@ -558,6 +560,7 @@ function normalizeStore(parsed) {
     labs: parsed.labs && typeof parsed.labs === "object" ? parsed.labs : {},
     roadmaps: normalizeRoadmaps(parsed),
     theme: ["dark", "light", "sepia", "midnight", "forest"].includes(parsed.theme) ? parsed.theme : "dark",
+    backendUrl: typeof parsed.backendUrl === "string" ? parsed.backendUrl.trim().replace(/\/+$/, "") : "",
     sound: parsed.sound !== false,
     gems: whole(parsed.gems),
     owned: Array.isArray(parsed.owned) ? parsed.owned.filter((x) => typeof x === "string") : ["frame-bronze", "title-newcomer"],
@@ -2931,6 +2934,11 @@ function initChat() {
     saveChatState();
   });
 
+  els.chatBackend.addEventListener("input", () => {
+    store.backendUrl = els.chatBackend.value.trim().replace(/\/+$/, "");
+    saveStore();
+  });
+
   els.memoryBtn.addEventListener("click", () => toggleMemory());
   els.memoryClose.addEventListener("click", () => toggleMemory(false));
   els.memoryForm.addEventListener("submit", (e) => {
@@ -2953,6 +2961,7 @@ function initChat() {
 
 function applyProviderUi() {
   els.chatProvider.value = chatState.provider;
+  if (els.chatBackend) els.chatBackend.value = store.backendUrl || "";
   const needsKey = isOpenRouter() || isGemini() || isGroq();
   els.chatKey.classList.toggle("hidden", !needsKey);
   els.chatKey.value = chatState.keys?.[chatState.provider] ?? chatState.apiKey ?? "";
@@ -3330,12 +3339,12 @@ async function sendChat() {
     );
     return;
   }
-  if (isGemini() && !chatState.apiKey) {
+  if (isGemini() && !chatState.apiKey && !store.backendUrl) {
     chatError("Add your Google Gemini API key above to chat. Get one free at aistudio.google.com.");
     els.chatKey.focus();
     return;
   }
-  if (isGroq() && !chatState.apiKey) {
+  if (isGroq() && !chatState.apiKey && !store.backendUrl) {
     chatError("Add your Groq API key above (it starts with gsk_) to chat. Get one free at console.groq.com/keys.");
     els.chatKey.focus();
     return;
@@ -3495,8 +3504,88 @@ async function streamGemini({ apiKey, model, messages, signal, onToken, systemPr
   return { tokens: totalTokens || null };
 }
 
+/* ---------- Optional server proxy (config-free on static hosts) ---------- */
+
+function streamViaProxy(url, kind, model, body, signal, onToken) {
+  return fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    signal,
+  }).then(async (res) => {
+    if (!res.ok) {
+      let message = `Proxy returned HTTP ${res.status}`;
+      try {
+        const data = await res.json();
+        if (data?.error?.message) message = data.error.message;
+        else if (data?.error?.error_message) message = data.error.error_message;
+      } catch {
+        // non-JSON error body
+      }
+      throw new Error(message);
+    }
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let tokens = 0;
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
+      for (const raw of lines) {
+        const line = raw.trim();
+        if (!line.startsWith("data:")) continue;
+        const data = line.slice(5).trim();
+        if (!data) continue;
+        try {
+          const j = JSON.parse(data);
+          const piece =
+            kind === "gemini"
+              ? j.candidates?.[0]?.content?.parts?.[0]?.text ?? null
+              : j.choices?.[0]?.delta?.content ?? null;
+          if (piece) {
+            onToken(piece);
+            tokens += piece.length;
+          }
+        } catch {
+          // ignore malformed SSE lines
+        }
+      }
+    }
+    return { tokens: tokens || null };
+  });
+}
+
+function streamViaBackend(model, messages, signal, onToken, systemPrompt, temperature, kind) {
+  const base = String(store.backendUrl || "").trim().replace(/\/+$/, "");
+  let url;
+  let body;
+  if (kind === "gemini") {
+    url = `${base}/api/gemini/${encodeURIComponent(model)}:generateContent?alt=sse`;
+    body = {
+      contents: messages.map((m) => ({ role: m.role, parts: [{ text: m.content }] })),
+      generationConfig: { temperature },
+    };
+  } else {
+    url = `${base}/api/groq/chat/completions`;
+    body = {
+      model,
+      messages: [{ role: "system", content: systemPrompt }, ...messages],
+      stream: true,
+    };
+    if (typeof temperature === "number") body.temperature = temperature;
+  }
+  return streamViaProxy(url, kind, model, body, signal, onToken);
+}
+
 function streamCurrent(messages, signal, onToken, systemPrompt = chatSystemPrompt(), temperature) {
   const model = activeModel();
+  if (store.backendUrl) {
+    const kind = isGemini() ? "gemini" : "openai";
+    return streamViaBackend(model, messages, signal, onToken, systemPrompt, temperature, kind);
+  }
   if (isGemini()) {
     return streamGemini({
       apiKey: chatState.apiKey,
@@ -6775,12 +6864,12 @@ function tutorNotice(text) {
 
 async function ensureTutorModel() {
   if (isGemini()) {
-    if (!chatState.apiKey) {
+    if (!chatState.apiKey && !store.backendUrl) {
       tutorNotice("Add your Google Gemini API key in Chat first, then come back.");
       return false;
     }
   } else if (isGroq()) {
-    if (!chatState.apiKey) {
+    if (!chatState.apiKey && !store.backendUrl) {
       tutorNotice("Add your Groq API key in Chat first, then come back.");
       return false;
     }
@@ -7779,7 +7868,7 @@ const AI_CARD_SYSTEM_PROMPT = [
 ].join("\n");
 
 function aiGenNeedsKey() {
-  return (isGemini() || isGroq() || isOpenRouter()) && !chatState.apiKey;
+  return (isGemini() || isGroq() || isOpenRouter()) && !chatState.apiKey && !store.backendUrl;
 }
 
 function setAiGenMsg(text, kind = "") {

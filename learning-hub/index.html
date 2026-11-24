@@ -309,6 +309,8 @@
       <div class="chat-config">
         <select id="chat-model" aria-label="Model"></select>
         <input id="chat-key" class="hidden" type="password" placeholder="API key" autocomplete="off" spellcheck="false" aria-label="API key">
+        <input id="chat-backend" class="modal-input chat-backend" type="text" placeholder="Backend URL (optional — your Learning Hub server, e.g. http://127.0.0.1:8137)" autocomplete="off" spellcheck="false" aria-label="Server proxy base URL">
+        <span class="chat-backend-hint">Optional: your server adds Groq/Gemini keys — paste nothing and chat via your proxy.</span>
       </div>
       <div class="chat-messages" id="chat-messages"></div>
       <div class="chat-composer">

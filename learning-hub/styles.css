@@ -1105,6 +1105,12 @@ button.secondary:hover { border-color: rgba(110, 161, 255, 0.5); }
   border-bottom: 1px solid var(--border);
 }
 
+.chat-backend {
+  width: 70%;
+  font-size: 13px;
+}
+.chat-backend-hint { font-size: 11px; color: var(--muted); flex-basis: 100%; }
+
 #chat-key {
   flex: 1 1 180px;
   min-width: 0;
